@@ -1,10 +1,10 @@
 /*
- * SRT321 Thermostat by MeavyDev
+ * SRT323 Thermostat by Aonghus-Mor, based on the SRT321 device driver by MeavyDev
  * With support for an associated switch set by the SRT321 helper app
  */
 metadata 
 {
-	definition (name: "SRT321 Thermostat", namespace: "meavydev", author: "MeavyDev",
+	definition (name: "SRT323 Thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
                 mnmn: "SmartThings", vid: "generic-thermostat", ocfDeviceType: "oic.d.thermostat", 
                 minHubCoreVersion: '000.017.0012', executeCommandsLocally: false) 
     {
@@ -15,7 +15,7 @@ metadata
 		capability "Polling"
 		capability "Sensor"
         capability "Health Check"
-        capability "Battery" // AMacK 31/01/19
+        capability "Battery" // added by Aonghus Mor
         
 		command "switchMode"
         command "quickSetHeat"
@@ -27,7 +27,7 @@ metadata
         		
 		// fingerprint deviceId: "0x0800", inClusters: "0x25, 0x31, 0x40, 0x43, 0x70, 0x72, 0x80, 0x84, 0x85, 0x86, 0xef"
 		fingerprint deviceId: "0x0800" 
-        fingerprint inClusters: "0x72,0x86,0x80,0x84,0x31,0x43,0x85,0x70,0x42,0x40"
+        fingerprint inClusters: "0x72,0x86,0x80,0x84,0x31,0x43,0x85,0x70,0x42,0x40" // added by Aonghus-Mor
         fingerprint inClusters: "0x72,0x86,0x80,0x84,0x31,0x43,0x85,0x70,0x40,0x25"
 	}
 
@@ -54,7 +54,7 @@ metadata
             
             tileAttribute("device.temperature", key: "SECONDARY_CONTROL") 
             {
-            	attributeState("default", label:'${currentValue} C', unit:"C")
+            	attributeState("default", label:'${currentValue}', unit:"dC")
             }
             
             tileAttribute("device.thermostatMode", key: "THERMOSTAT_MODE") 
@@ -65,13 +65,18 @@ metadata
             
   			tileAttribute("device.heatingSetpoint", key: "HEATING_SETPOINT") 
             {
-    			attributeState("default", label:'${currentValue}', unit:"C")
+    			attributeState("default", label:'${currentValue}', unit:"dC")
 			}
             
-            tileAttribute("device.thermostatMode", key: "OPERATING_STATE") 
+            tileAttribute("device.thermostatOperatingState", key: "OPERATING_STATE") 
             {
-                attributeState("off", backgroundColor:"#44b621")
-                attributeState("heat", backgroundColor:"#ffa81e")
+                attributeState("idle", backgroundColor:"#44b621")
+                attributeState("heating", backgroundColor:"#ffa81e")
+            }
+            
+            tileAttribute("device.heatingSetPoint", key: "HEATING_SETPOINT")
+            {
+            	attributeState("heatingSetPoint" , label: '${currentValue}', unit:"dC", defaultState: true)
             }
         }  
 
@@ -95,7 +100,7 @@ metadata
 	}
 
 	main "heatingSetpoint"
-    details(["heatingSetpoint", "battery", "refresh", "configure", "temperature", "mode"])
+    details(["heatingSetpoint", "battery", "refresh", "configure"])
 
     preferences 
     {
@@ -109,13 +114,14 @@ metadata
 def parse(String description)
 {
 //	log.debug "Parse $description"
-
+    // parse codes amended by Aonghus-Mor, 0x42:2 added.
 	//def result = zwaveEvent(zwave.parse(description, [0x72:1, 0x86:1, 0x80:1, 0x84:2, 0x31:1, 0x43:1, 0x85:1, 0x70:1, 0xEF:1, 0x40:1, 0x25:1]))
     def result = zwaveEvent(zwave.parse(description, [0x72:1, 0x86:1, 0x80:1, 0x84:2, 0x31:1, 0x43:1, 0x85:1, 0x70:1, 0xEF:1, 0x40:1, 0x42:2, 0x25:1]))
 	if (!result) 
     {
     	log.warn "Parse returned null"
         log.debug "Parse $description"
+        log.debug "$cmd"
 		return null
 	}
     
@@ -154,7 +160,8 @@ def ping()
 
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet cmd)
 {
-	def map = [:]
+	log.debug "ModeSet: $cmd"
+    def map = [:]
 	switch (cmd.mode) {
 		case physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet.MODE_OFF:
 			map.value = "off"
@@ -169,7 +176,8 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet c
 // Event Generation
 def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointReport cmd)
 {
-	def map = [:]
+	log.debug "SetPointReport: $cmd"
+    def map = [:]
 	map.value = cmd.scaledValue.toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.displayed = false
@@ -189,7 +197,8 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelReport cmd)
 {
-	def map = [:]
+	log.debug "MultilevelReport: $cmd"
+    def map = [:]
 	map.value = cmd.scaledSensorValue.toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.name = "temperature"
@@ -229,6 +238,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) 
 {
+    log.debug "BatteryReport: $cmd"
     def map = [ name: "battery", unit: "%" ]
     if (cmd.batteryLevel == 0xFF) 
     {  // Special value for low battery alert
@@ -248,7 +258,8 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd)
 
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeReport cmd) 
 {
-	def map = [:]
+	log.debug "ModeReport: $cmd"
+    def map = [:]
 	switch (cmd.mode) {
 		case physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeReport.MODE_OFF:
 			map.value = "off"
@@ -258,36 +269,45 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeRepor
 			break
 	}
 	map.name = "thermostatMode"
+    log.debug "Mode: ${map.value}"
 	createEvent(map)
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.ThermostatOperatingStateReport cmd) //added AMacK 29/01/19
+//ThermostatOperatingStateReport added by Aonghus_Mor
+// retuned by the device when the temperature setting is changed.
+// functionality the same as MeavyDev's ThermostatModeReport 
+def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.ThermostatOperatingStateReport cmd)
 {
     def map = [:]
 	switch (cmd.operatingState) {
 		case physicalgraph.zwave.commands.thermostatoperatingstatev2.ThermostatOperatingStateReport.OPERATING_STATE_IDLE:
-			map.value = "off"
+			map.value = "idle"
 			break
 		case physicalgraph.zwave.commands.thermostatoperatingstatev2.ThermostatOperatingStateReport.OPERATING_STATE_HEATING:
-			map.value = "heat"
+			map.value = "heating"
 			break
         default:
         	log.debug "Invalid Zwave Operating State Event received: $cmd"
 	}
-	map.name = "thermostatMode"
+	map.name = "thermostatOperatingState"
     log.debug "Operating State: ${map.value}"
 	createEvent(map)
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSupportedReport cmd) // added AMacK 31/01/19
+// ThermostatModeSupportedReport added by Aonghus_Mor
+// response to ThermostatModeSupportedGet which is run by 'configure'.
+// trivial check that 'heat' is supported.
+def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSupportedReport cmd)
 {
 	if ( cmd.heat == true )
     {
     	log.info "Heat capability confirmed."
+        return true
     }
     else
     {
     	log.warn "Heat capability NOT confirmed.  Something wrong?"
+        return false
     }
 }
 
@@ -302,7 +322,8 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSuppo
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd)
 {
-	def map = [ name: "reportedWakeUpInterval", unit: "seconds" ]
+	log.debug "WakeUpIntervalReport: $cmd"
+    def map = [ name: "reportedWakeUpInterval", unit: "seconds" ]
 	map.value = cmd.seconds
 	map.displayed = false
     createEvent(map)
@@ -465,7 +486,7 @@ def updateIfNeeded()
 	if (state.refreshNeeded)
     {
         log.debug "Refresh"
-        sendEvent(name:"SRT321", value: "Refresh")
+        sendEvent(name:"SRT323", value: "Refresh")
 
         cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
 		cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
@@ -479,7 +500,7 @@ def updateIfNeeded()
     if (state.updateNeeded)
     {
         log.debug "Updating setpoint $state.convertedDegrees"
-		sendEvent(name:"SRT321", value: "Updating setpoint $state.convertedDegrees")
+		sendEvent(name:"SRT323", value: "Updating setpoint $state.convertedDegrees")
 		cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, scale: state.deviceScale, precision: state.p, scaledValue: state.convertedDegrees).format()
         state.updateNeeded = false
     }
@@ -487,7 +508,7 @@ def updateIfNeeded()
     if (state.configNeeded)
     {
         log.debug "Config"
-		sendEvent(name:"SRT321", value: "Config")
+		sendEvent(name:"SRT323", value: "Config")
     	state.configNeeded = false
         
         // Nodes controlled by Thermostat Mode Set - not sure this is needed?
