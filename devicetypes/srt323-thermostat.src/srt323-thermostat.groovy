@@ -42,7 +42,7 @@ metadata
         {
             tileAttribute ("device.heatingSetpoint", key: "PRIMARY_CONTROL") 
             {
-                attributeState("default", unit:"dC", label:'${currentValue}°')
+                attributeState("default", unit:"dC", label:'${currentValue}Â°')
             }
             
             tileAttribute("device.heatingSetpoint", key: "VALUE_CONTROL") 
