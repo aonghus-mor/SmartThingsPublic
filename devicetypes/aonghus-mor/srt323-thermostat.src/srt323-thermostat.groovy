@@ -40,7 +40,7 @@ metadata
     {
         multiAttributeTile(name:"heatingSetpoint", type: "thermostat", width: 6, height: 4, canChangeIcon: true)
         {
-            tileAttribute ("device.heatingSetpoint", key: "PRIMARY_CONTROL") 
+            tileAttribute ("device.temperature", key: "PRIMARY_CONTROL") 
             {
                 attributeState("default", unit:"dC", label:'${currentValue}°')
             }
@@ -52,10 +52,10 @@ metadata
 //                attributeState("default", action: "setTemperature")
             }
             
-            tileAttribute("device.temperature", key: "SECONDARY_CONTROL") 
-            {
-            	attributeState("default", label:'${currentValue}', unit:"dC")
-            }
+            //tileAttribute("device.temperature", key: "SECONDARY_CONTROL") 
+            //{
+            //	attributeState("default", label:'${currentValue}', unit:"dC")
+            //}
             
             tileAttribute("device.thermostatMode", key: "THERMOSTAT_MODE") 
             {
@@ -475,7 +475,8 @@ def updateIfNeeded()
 	def cmds = []
     
     log.debug "updateIfNeeded"
-    
+    cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
+	
     // Only ask for battery if we haven't had a BatteryReport in a while
     if (!state.lastbatt || (new Date().time) - state.lastbatt > 24*60*60*1000) 
     {
@@ -487,8 +488,6 @@ def updateIfNeeded()
     {
         log.debug "Refresh"
         sendEvent(name:"SRT323", value: "Refresh")
-
-        cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
 		cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
 
 		cmds << zwave.thermostatModeV1.thermostatModeGet().format()
