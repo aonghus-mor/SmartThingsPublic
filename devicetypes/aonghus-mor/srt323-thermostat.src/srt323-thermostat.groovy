@@ -40,7 +40,7 @@ metadata
     {
         multiAttributeTile(name:"heatingSetpoint", type: "thermostat", width: 6, height: 4, canChangeIcon: true)
         {
-            tileAttribute ("device.temperature", key: "PRIMARY_CONTROL") 
+            tileAttribute ("device.heatingSetpoint", key: "PRIMARY_CONTROL") 
             {
                 attributeState("default", unit:"dC", label:'${currentValue}°')
             }
@@ -52,10 +52,10 @@ metadata
 //                attributeState("default", action: "setTemperature")
             }
             
-            //tileAttribute("device.temperature", key: "SECONDARY_CONTROL") 
-            //{
-            //	attributeState("default", label:'${currentValue}', unit:"dC")
-            //}
+            tileAttribute("device.temperature", key: "SECONDARY_CONTROL") 
+            {
+            	attributeState("default", label:'${currentValue}', unit:"dC")
+            }
             
             tileAttribute("device.thermostatMode", key: "THERMOSTAT_MODE") 
             {
@@ -150,7 +150,6 @@ def sendHealthCheckInterval()
 {
     // Device-Watch simply pings if no device events received for 60min(checkInterval)
 	sendEvent(name: "checkInterval", value: 60 * 60, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-    //log.debug "sendHealthCheckInterval: ${device.hub.hardwareID}"
 }
 
 def ping()
@@ -180,7 +179,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 	log.debug "SetPointReport: $cmd"
     def map = [:]
 	map.value = cmd.scaledValue.toString()
-	map.unit = cmd.scale == 1 ? "dF" : "dC"
+	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.displayed = false
 	switch (cmd.setpointType) {
 		case 1:
@@ -198,11 +197,11 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelReport cmd)
 {
+	log.debug "MultilevelReport: $cmd"
     def map = [:]
 	map.value = cmd.scaledSensorValue.toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.name = "temperature"
-    log.debug "Temperature: ${map.value} ${map.unit}"
 	createEvent(map)
 }
 
@@ -300,7 +299,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.Thermosta
 // trivial check that 'heat' is supported.
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSupportedReport cmd)
 {
-    if ( cmd.heat == true )
+	if ( cmd.heat == true )
     {
     	log.info "Heat capability confirmed."
         return true
@@ -312,14 +311,14 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSuppo
     }
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalCapabilitiesReport cmd) 
-{
-    def map = [ name: "defaultWakeUpInterval", unit: "seconds" ]
-	map.value = cmd.defaultWakeUpIntervalSeconds
-	map.displayed = false
-	state.defaultWakeUpInterval = cmd.defaultWakeUpIntervalSeconds
-    createEvent(map)
-}
+//def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpIntervalCapabilitiesReport cmd) 
+//{
+//    def map = [ name: "defaultWakeUpInterval", unit: "seconds" ]
+//	map.value = cmd.defaultWakeUpIntervalSeconds
+//	map.displayed = false
+//	state.defaultWakeUpInterval = cmd.defaultWakeUpIntervalSeconds
+//    createEvent(map)
+//}
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd)
 {
@@ -344,7 +343,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd)
 		zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: 1).format(),
 		zwave.thermostatModeV1.thermostatModeGet().format(),
 		zwave.thermostatFanModeV3.thermostatFanModeGet().format(),
-		zwave.thermostatOperatingStateV2.thermostatOperatingStateGet().format()
+		zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
 	], 1000)
 
 }
@@ -382,7 +381,7 @@ def poll()
 		zwave.sensorMultilevelV1.sensorMultilevelGet().format(), // current temperature
 		zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format(),
 		zwave.thermostatModeV1.thermostatModeGet().format(),
-		zwave.thermostatOperatingStateV2.thermostatOperatingStateGet().format()
+		zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
 	], 1000)
 }
 
@@ -398,7 +397,7 @@ def refresh()
 		zwave.sensorMultilevelV1.sensorMultilevelGet().format(), // current temperature
 		zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format(),
 		zwave.thermostatModeV1.thermostatModeGet().format(),
-		zwave.thermostatOperatingStateV2.thermostatOperatingStateGet().format()
+		zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
 	], 1000)
 }
 
@@ -476,7 +475,7 @@ def updateIfNeeded()
 	def cmds = []
     
     log.debug "updateIfNeeded"
-    cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
+    
     // Only ask for battery if we haven't had a BatteryReport in a while
     if (!state.lastbatt || (new Date().time) - state.lastbatt > 24*60*60*1000) 
     {
@@ -487,9 +486,9 @@ def updateIfNeeded()
 	if (state.refreshNeeded)
     {
         log.debug "Refresh"
-        sendEvent(name:"SRT321", value: "Refresh")
+        sendEvent(name:"SRT323", value: "Refresh")
 
-        //cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
+        cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
 		cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
 
 		cmds << zwave.thermostatModeV1.thermostatModeGet().format()
@@ -501,7 +500,7 @@ def updateIfNeeded()
     if (state.updateNeeded)
     {
         log.debug "Updating setpoint $state.convertedDegrees"
-		sendEvent(name:"SRT321", value: "Updating setpoint $state.convertedDegrees")
+		sendEvent(name:"SRT323", value: "Updating setpoint $state.convertedDegrees")
 		cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, scale: state.deviceScale, precision: state.p, scaledValue: state.convertedDegrees).format()
         state.updateNeeded = false
     }
@@ -509,7 +508,7 @@ def updateIfNeeded()
     if (state.configNeeded)
     {
         log.debug "Config"
-		sendEvent(name:"SRT321", value: "Config")
+		sendEvent(name:"SRT323", value: "Config")
     	state.configNeeded = false
         
         // Nodes controlled by Thermostat Mode Set - not sure this is needed?
@@ -558,7 +557,6 @@ def updateIfNeeded()
 
 private getUserWakeUp(userWake) 
 {
-    log.debug "getUserWakeUp: $userWake"
     if (!userWake)  
     { 
     	userWake = '3600' // set default 1 hr if no user preference 
