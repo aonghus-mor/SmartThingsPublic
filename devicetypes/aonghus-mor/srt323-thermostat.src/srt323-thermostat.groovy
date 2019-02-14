@@ -113,6 +113,10 @@ metadata
         {
         	input "userWakeUpInterval", "number", title: "Wakeup interval...", description: "Wake Up Interval (seconds)", defaultValue: 3600, required: false, displayDuringSetup: false
 		}
+        section
+        {
+        	input "deltaT", "decimal", title: "Temperature reporting step.", description: "Report Temperature when it changes by this step (0.1 - 10.0 C ).", defaultValue: 1.0, range: "0.1..10.0", required: false, displayDuringSetup: false
+        }
         //if ( state.productId == 0x0004 )
 		//{
         //	section
@@ -378,7 +382,8 @@ def configure()
 {
 	log.debug "configure"
 	state.configNeeded = true
-    
+    short dT = deltaT ? (10 * deltaT) : 0x0A
+    state.deltaTemperature = [dT]
     // Normally this won't do anything as the thermostat is asleep, 
     // but do this in case it helps with the initial config
 	delayBetween([
@@ -391,7 +396,9 @@ def configure()
         // Set hub to get multi-level sensor reports (defaults to temperature changes of > 1C)
         zwave.associationV1.associationSet(groupingIdentifier:5, nodeId:[zwaveHubNodeId]).format(),
         // set the temperature sensor On
-		zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format()
+		zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format(),
+        // set delta temperature for reporting, i.e. when to report a T change.
+        zwave.configurationV1.configurationSet(configurationValue: state.deltaTemperature, parameterNumber: 3, size: 1).format()
 	], 1000)
 }
 
@@ -499,7 +506,8 @@ def updateIfNeeded()
 	def cmds = []
     
     log.debug "updateIfNeeded"
-    cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
+    //cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
+    //cmds << "delay 500"
    
     // Only ask for battery if we haven't had a BatteryReport in a while
     if (!state.lastbatt || (new Date().time) - state.lastbatt > 24*60*60*1000) 
@@ -527,6 +535,7 @@ def updateIfNeeded()
         log.debug "Updating setpoint $state.convertedDegrees"
 		//sendEvent(name:"SRT321", value: "Updating setpoint $state.convertedDegrees")
 		cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, scale: state.deviceScale, precision: state.p, scaledValue: state.convertedDegrees).format()
+        
         state.updateNeeded = false
     }
     
@@ -535,6 +544,9 @@ def updateIfNeeded()
         log.debug "Config"
 		//sendEvent(name:"SRT321", value: "Config")
     	state.configNeeded = false
+        short dT = deltaT ? (10 * deltaT) : 0x0A
+        state.deltaTemperature = [dT]
+        log.debug "Delta T changed to ${state.deltaTemperature}"
         
         // Nodes controlled by Thermostat Mode Set - not sure this is needed?
         cmds << zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:[zwaveHubNodeId]).format()
@@ -550,6 +562,7 @@ def updateIfNeeded()
         
         // set the temperature sensor On
 		cmds << zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format()
+        cmds << zwave.configurationV1.configurationSet(configurationValue: state.deltaTemperature, parameterNumber: 3, size: 1).format()
 
 		//log.debug "association $state.association user: $userAssociatedDevice"
 		//int nodeID = getAssociatedId(state.association)
