@@ -22,7 +22,7 @@ metadata
 		command "setTemperature"
 		command "setTempUp"
 		command "setTempDown"
-        command "setAwayMode"
+        //command "setAwayMode"
         
 		command "setupDevice" 
         		
@@ -405,7 +405,7 @@ def configure()
 def poll() 
 {
 	log.debug "poll"
-
+	state.refreshNeeded = true
 	// Normally this won't do anything as the thermostat is asleep, 
     // but do this in case it helps with the initial config
 	delayBetween([
@@ -523,10 +523,10 @@ def updateIfNeeded()
 		//cmds << zwave.basicV1.basicSet(value: (state.awayMode ? 0x00 : 0xFF)).format() 
         //cmds << zwave.basicV1.basicGet().format()
         cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
-		cmds << zwave.thermostatModeV1.thermostatModeGet().format()
+		cmds << zwave.thermostatModeV1.thermostatModeSupportedGet().format()
+        cmds << zwave.thermostatModeV1.thermostatModeGet().format()
 		cmds << zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
-        cmds << zwave.thermostatModeV1.thermostatModeSupportedGet().format()
-       
+        
        	state.refreshNeeded = false
     }
     
