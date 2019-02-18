@@ -184,7 +184,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 {
 	log.debug "SetPointReport: $cmd"
     def map = [:]
-	map.value = cmd.scaledValue.toString()
+	map.value = cmd.scaledValue.toInteger().toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.displayed = false
 	switch (cmd.setpointType) {
@@ -351,6 +351,21 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv1.ManufacturerS
     return true
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd)
+{
+   log.debug "${cmd}"
+   switch (cmd.parameterNumber )
+   {
+      case 0x02: 
+      	state.scale = cmd.configurationValue[0]
+        log.debug "Temperature scale: ${state.scale}"
+        break
+      default:
+      	log.debug "Please check the parameter number"
+   }
+   return true
+}
+
 def zwaveEvent(physicalgraph.zwave.Command cmd) 
 {
 	log.warn "Unexpected zwave command $cmd"
@@ -449,38 +464,40 @@ def setTemperature(temp)
 
 def setHeatingSetpoint(degrees) 
 {
-	setHeatingSetpoint(degrees.toDouble())
+	//sendEvent(name: 'heatingSetpoint', value: degrees)
+    setHeatingSetpoint(degrees.toDouble())
 	log.debug("Degrees at setheatpoint: $degrees")
 }
 
 def setHeatingSetpoint(Double degrees) 
 {
 	log.trace "setHeatingSetpoint($degrees)"
-    sendEvent(name: 'heatingSetpoint', value: degrees)
+    sendEvent(name: 'heatingSetpoint', value: degrees.toInteger())
 
-	def deviceScale = state.scale ?: 1
-	def deviceScaleString = deviceScale == 2 ? "C" : "F"
-    def locationScale = getTemperatureScale()
+	//def deviceScale = state.scale ?: 1
+	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
+    //def locationScale = getTemperatureScale()
     def p = (state.precision == null) ? 1 : state.precision
 
-    def convertedDegrees
-    if (locationScale == "C" && deviceScaleString == "F") 
-    {
-        convertedDegrees = celsiusToFahrenheit(degrees)
-    } 
-    else if (locationScale == "F" && deviceScaleString == "C") 
-    {
-        convertedDegrees = fahrenheitToCelsius(degrees)
-    } 
-    else 
-    {
-        convertedDegrees = degrees
-    }
+    //def convertedDegrees
+    //if (locationScale == "C" && deviceScaleString == "F") 
+    //{
+    //    convertedDegrees = celsiusToFahrenheit(degrees)
+    //} 
+    //else if (locationScale == "F" && deviceScaleString == "C") 
+    //{
+    //    convertedDegrees = fahrenheitToCelsius(degrees)
+    //} 
+    //else 
+    //{
+    //    convertedDegrees = degrees
+    //}
 
-	log.trace "setHeatingSetpoint scale: $deviceScale precision: $p setpoint: $convertedDegrees"
-	state.deviceScale = deviceScale
+	log.trace "setHeatingSetpoint scale: ${state.scale} precision: $p setpoint: ${degrees}"
+	//state.deviceScale = deviceScale
     state.p = p
-    state.convertedDegrees = convertedDegrees
+    //state.p = 0
+    state.degrees = degrees
     state.updateNeeded = true
     // thermostatMode
 }
@@ -515,16 +532,23 @@ def updateIfNeeded()
 		cmds << zwave.thermostatModeV1.thermostatModeSupportedGet().format()
         cmds << zwave.thermostatModeV1.thermostatModeGet().format()
 		cmds << zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
+        cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x02).format()
         
        	state.refreshNeeded = false
     }
     
     if (state.updateNeeded)
     {
-        log.debug "Updating setpoint $state.convertedDegrees"
+        log.debug "Updating setpoint $state.degrees"
 		//sendEvent(name:"SRT321", value: "Updating setpoint $state.convertedDegrees")
-		cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, scale: state.deviceScale, precision: state.p, scaledValue: state.convertedDegrees).format()
-        
+		//cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, 
+        //														scale: state.deviceScale, 
+        //                                                        precision: state.p, 
+        //                                                        scaledValue: state.convertedDegrees).format()
+        cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, 
+        														scale: state.scale, 
+                                                                precision: state.p, 
+                                                                scaledValue: state.degrees).format()
         state.updateNeeded = false
     }
     
@@ -533,9 +557,6 @@ def updateIfNeeded()
         log.debug "Config"
 		//sendEvent(name:"SRT321", value: "Config")
     	state.configNeeded = false
-        short dT = deltaT ? (10 * deltaT) : 0x0A
-        state.deltaTemperature = [dT]
-        log.debug "Delta T changed to ${state.deltaTemperature}"
         
         // Nodes controlled by Thermostat Mode Set - not sure this is needed?
         cmds << zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:[zwaveHubNodeId]).format()
@@ -551,6 +572,21 @@ def updateIfNeeded()
         
         // set the temperature sensor On
 		cmds << zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format()
+        def Tscale
+        if( getTemperatureScale() == "C" )
+        {
+        	Tscale = [0x00]
+            state.scale = 0
+        }
+        else
+        {	Tscale = [0xff]
+        	state.scale = 1
+        }
+        cmds << zwave.configurationV1.configurationSet(configurationValue: Tscale, parameterNumber: 2, size: 1).format()
+        state.configNeeded = false
+        short dT = deltaT ? (10 * deltaT) : 0x0A
+        state.deltaTemperature = [dT]
+        log.debug "Delta T changed to ${state.deltaTemperature}"
         cmds << zwave.configurationV1.configurationSet(configurationValue: state.deltaTemperature, parameterNumber: 3, size: 1).format()
 
 		//log.debug "association $state.association user: $userAssociatedDevice"
