@@ -39,24 +39,24 @@ metadata
 
 	tiles (scale: 2)
     {
-        multiAttributeTile(name:"heatingSetpoint", type: "thermostat", width: 6, height: 4, canChangeIcon: true)
+        multiAttributeTile(name:"mainTile", type: "thermostat", width: 6, height: 4, canChangeIcon: true)
         {
             tileAttribute ("device.temperature", key: "PRIMARY_CONTROL") 
             {
-                attributeState("default", unit:"dC", label:'${currentValue}°')
+                attributeState("temperature", unit:"dC", label:'${currentValue}°', defaultState: true)
             }
             
             tileAttribute("device.heatingSetpoint", key: "VALUE_CONTROL") 
             {
                 attributeState("VALUE_UP", action: "setTempUp")
                 attributeState("VALUE_DOWN", action: "setTempDown")
-//                attributeState("default", action: "setTemperature")
             }
             
-            //tileAttribute("device.temperature", key: "SECONDARY_CONTROL") 
-            //{
-            //	attributeState("default", label:'${currentValue}', unit:"dC")
-            //}
+            tileAttribute("device.thermostatOperatingState", key: "OPERATING_STATE") 
+            {
+                attributeState("idle", backgroundColor:"#44b621")
+                attributeState("heating", backgroundColor:"#ffa81e")
+            }
             
             tileAttribute("device.thermostatMode", key: "THERMOSTAT_MODE") 
             {
@@ -66,19 +66,8 @@ metadata
             
   			tileAttribute("device.heatingSetpoint", key: "HEATING_SETPOINT") 
             {
-    			attributeState("default", label:'${currentValue}', unit:"dC")
+    			attributeState("heatingSetpoint", label:'${currentValue}°', unit:"dC", defaultState: true)
 			}
-            
-            tileAttribute("device.thermostatOperatingState", key: "OPERATING_STATE") 
-            {
-                attributeState("idle", backgroundColor:"#44b621")
-                attributeState("heating", backgroundColor:"#ffa81e")
-            }
-            
-            tileAttribute("device.heatingSetPoint", key: "HEATING_SETPOINT")
-            {
-            	attributeState("heatingSetPoint" , label: '${currentValue}', unit:"dC", defaultState: true)
-            }
         }  
 
         valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat", width: 2, height: 2) 
@@ -104,8 +93,8 @@ metadata
 		//}
 	}
 
-	main "heatingSetpoint"
-    details(["heatingSetpoint", "battery", "refresh", "configure"]) //, "awayMode"])
+	main "mainTile"
+    details(["mainTile", "battery", "refresh", "configure"]) //, "awayMode"])
 
     preferences
     {
