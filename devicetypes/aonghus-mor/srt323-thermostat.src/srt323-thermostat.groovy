@@ -182,7 +182,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet c
 // Event Generation
 def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointReport cmd)
 {
-	log.debug "SetPointReport: $cmd"
+	//log.debug "SetPointReport: $cmd"
     def map = [:]
 	map.value = cmd.scaledValue.toInteger().toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
@@ -194,6 +194,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 		default:
 			return [:]
 	}
+    log.debug "SetPointReport: ${map.value} ${map.unit}"
 	// So we can respond with same format
 	state.size = cmd.size
 	state.scale = cmd.scale
@@ -244,7 +245,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) 
 {
-    log.debug "BatteryReport: $cmd"
+    //log.debug "BatteryReport: $cmd"
     def map = [ name: "battery", unit: "%" ]
     if (cmd.batteryLevel == 0xFF) 
     {  // Special value for low battery alert
@@ -264,7 +265,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd)
 
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeReport cmd) 
 {
-	log.debug "ModeReport: $cmd"
+	//log.debug "ModeReport: $cmd"
     def map = [:]
 	switch (cmd.mode) {
 		case physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeReport.MODE_OFF:
@@ -273,6 +274,8 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeRepor
 		case physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeReport.MODE_HEAT:
 			map.value = "heat"
 			break
+        default:
+        	log.debug "Invalid Zwave Mode Event received: $cmd"
 	}
 	map.name = "thermostatMode"
     log.debug "Mode: ${map.value}"
@@ -335,14 +338,14 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd)
     createEvent(map)
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) 
-{
-    def map = [:]
-    map.value = cmd.value == 0x00 ? 'on' : 'off' 
-    map.name = "awayMode"
-    log.debug "Away Mode: ${map.value} ${cmd:value}"
-    createEvent(map)
-}
+//def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) 
+//{
+//    def map = [:]
+//    map.value = cmd.value == 0x00 ? 'on' : 'off' 
+//    map.name = "awayMode"
+//    log.debug "Away Mode: ${map.value} ${cmd:value}"
+//    createEvent(map)
+//}
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv1.ManufacturerSpecificReport cmd)
 {
@@ -356,9 +359,17 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
    log.debug "${cmd}"
    switch (cmd.parameterNumber )
    {
+      case 0x01:
+      	def onoff = ( cmd.configurationValue[0] == 0xff ) ? "on" : "off"
+        log.debug "Temperature measurement ${onoff}."
+        break
       case 0x02: 
       	state.scale = cmd.configurationValue[0]
         log.debug "Temperature scale: ${state.scale}"
+        break
+      case 0x03:
+      	double deltaT = cmd.configurationValue[0] * 0.1
+        log.debug "Temperture reporting step: ${deltaT}"
         break
       default:
       	log.debug "Please check the parameter number"
@@ -387,7 +398,7 @@ def configure()
 	log.debug "configure"
 	state.configNeeded = true
     short dT = deltaT ? (10 * deltaT) : 0x0A
-    state.deltaTemperature = [dT]
+    //state.deltaTemperature = [dT]
     // Normally this won't do anything as the thermostat is asleep, 
     // but do this in case it helps with the initial config
 	delayBetween([
@@ -402,7 +413,7 @@ def configure()
         // set the temperature sensor On
 		zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format(),
         // set delta temperature for reporting, i.e. when to report a T change.
-        zwave.configurationV1.configurationSet(configurationValue: state.deltaTemperature, parameterNumber: 3, size: 1).format()
+        zwave.configurationV1.configurationSet(configurationValue: [dT], parameterNumber: 3, size: 1).format()
 	], 1000)
 }
 
@@ -465,12 +476,12 @@ def setTemperature(temp)
 def setHeatingSetpoint(degrees) 
 {
 	//sendEvent(name: 'heatingSetpoint', value: degrees)
-    setHeatingSetpoint(degrees.toDouble())
-	log.debug("Degrees at setheatpoint: $degrees")
-}
+    //setHeatingSetpoint(degrees.toDouble())
+	//log.debug("Degrees at setheatpoint: $degrees")
+//}
 
-def setHeatingSetpoint(Double degrees) 
-{
+//def setHeatingSetpoint(Double degrees) 
+//{
 	log.trace "setHeatingSetpoint($degrees)"
     sendEvent(name: 'heatingSetpoint', value: degrees.toInteger())
 
@@ -497,7 +508,7 @@ def setHeatingSetpoint(Double degrees)
 	//state.deviceScale = deviceScale
     state.p = p
     //state.p = 0
-    state.degrees = degrees
+    state.setpoint = (int)degrees
     state.updateNeeded = true
     // thermostatMode
 }
@@ -529,26 +540,24 @@ def updateIfNeeded()
 		//cmds << zwave.basicV1.basicSet(value: (state.awayMode ? 0x00 : 0xFF)).format() 
         //cmds << zwave.basicV1.basicGet().format()
         cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
-		cmds << zwave.thermostatModeV1.thermostatModeSupportedGet().format()
+		//
         cmds << zwave.thermostatModeV1.thermostatModeGet().format()
 		cmds << zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
         cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x02).format()
+        cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x03).format()
         
        	state.refreshNeeded = false
     }
     
     if (state.updateNeeded)
     {
-        log.debug "Updating setpoint $state.degrees"
+        log.debug "Updating setpoint $state.setpoint"
 		//sendEvent(name:"SRT321", value: "Updating setpoint $state.convertedDegrees")
-		//cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, 
-        //														scale: state.deviceScale, 
-        //                                                        precision: state.p, 
-        //                                                        scaledValue: state.convertedDegrees).format()
+        double setpoint = state.setpoint
         cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, 
         														scale: state.scale, 
                                                                 precision: state.p, 
-                                                                scaledValue: state.degrees).format()
+                                                                scaledValue: setpoint).format()
         state.updateNeeded = false
     }
     
@@ -557,7 +566,7 @@ def updateIfNeeded()
         log.debug "Config"
 		//sendEvent(name:"SRT321", value: "Config")
     	state.configNeeded = false
-        
+        cmds << zwave.thermostatModeV1.thermostatModeSupportedGet().format()
         // Nodes controlled by Thermostat Mode Set - not sure this is needed?
         cmds << zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:[zwaveHubNodeId]).format()
         
@@ -570,24 +579,19 @@ def updateIfNeeded()
          // Set hub to get multi-level sensor reports (defaults to temperature changes of > 1C)
         cmds << zwave.associationV1.associationSet(groupingIdentifier:5, nodeId:[zwaveHubNodeId]).format()
         
+        // set the configuration parameters
         // set the temperature sensor On
 		cmds << zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format()
-        def Tscale
-        if( getTemperatureScale() == "C" )
-        {
-        	Tscale = [0x00]
-            state.scale = 0
-        }
-        else
-        {	Tscale = [0xff]
-        	state.scale = 1
-        }
-        cmds << zwave.configurationV1.configurationSet(configurationValue: Tscale, parameterNumber: 2, size: 1).format()
-        state.configNeeded = false
+        // set the temperature scale, "C" or "F"
+        short Tscale = ( location.temperatureScale == "C" ) ? 0x00 : 0xff
+        state.scale = ( Tscale == 0x00 ) ? 0 : 1
+        cmds << zwave.configurationV1.configurationSet(configurationValue: [Tscale], parameterNumber: 2, size: 1).format()
+        
+        // set temperature reporting step.
         short dT = deltaT ? (10 * deltaT) : 0x0A
-        state.deltaTemperature = [dT]
-        log.debug "Delta T changed to ${state.deltaTemperature}"
-        cmds << zwave.configurationV1.configurationSet(configurationValue: state.deltaTemperature, parameterNumber: 3, size: 1).format()
+        //state.deltaTemperature = [dT]
+        log.debug "Delta T changed to ${dT}"
+        cmds << zwave.configurationV1.configurationSet(configurationValue: [dT], parameterNumber: 3, size: 1).format()
 
 		//log.debug "association $state.association user: $userAssociatedDevice"
 		//int nodeID = getAssociatedId(state.association)
@@ -609,6 +613,7 @@ def updateIfNeeded()
     	}  
 		cmds << zwave.thermostatModeV1.thermostatModeSupportedGet().format()
         cmds << zwave.manufacturerSpecificV2.manufacturerSpecificGet().format()
+        state.configNeeded = false
     }
     
     if (cmds.size() > 0)
