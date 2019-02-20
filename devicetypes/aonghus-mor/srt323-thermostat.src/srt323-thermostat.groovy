@@ -1,6 +1,5 @@
 /*
  * SRT323 Thermostat by Aonghus-Mor, based on the SRT321 device driver by MeavyDev.
- * With support for an associated switch set by the SRT321 helper app
  */
 metadata 
 {
