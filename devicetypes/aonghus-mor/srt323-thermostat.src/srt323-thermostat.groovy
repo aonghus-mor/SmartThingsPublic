@@ -16,14 +16,14 @@ metadata
         capability "Health Check"
         capability "Battery" // added by Aonghus Mor
         
-		command "switchMode"
+		//command "switchMode"
         command "quickSetHeat"
 		command "setTemperature"
 		command "setTempUp"
 		command "setTempDown"
         //command "setAwayMode"
         
-		command "setupDevice" 
+		//command "setupDevice" 
         		
 		// fingerprint deviceId: "0x0800", inClusters: "0x25, 0x31, 0x40, 0x43, 0x70, 0x72, 0x80, 0x84, 0x85, 0x86, 0xef"
 		fingerprint deviceId: "0x0800" 
@@ -218,7 +218,8 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelR
 // stop listening.
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
-		def map = [name:"thermostatWakeUp", value: "${device.displayName} woke up", isStateChange: true]       
+		//def map = [name:"thermostatWakeUp", value: "${device.displayName} woke up", isStateChange: true]
+        def map = [name:"wakeUp", value: "done", isStateChange: true]   
         def event = createEvent(map)
 		def cmds = updateIfNeeded()
         
@@ -601,8 +602,12 @@ private sendConfig(cmds)
 
     // set temperature reporting step.
     short dT = deltaT ? (10 * deltaT) : 0x0A
-    //state.deltaTemperature = [dT]
-    log.debug "Delta T changed to ${dT}"
+    if ( dT != state.deltaT )
+    {
+    	state.deltaT = dT
+    	//state.deltaTemperature = [dT]
+    	log.debug "Delta T changed to ${dT}"
+    }
     cmds << zwave.configurationV1.configurationSet(configurationValue: [dT], parameterNumber: 3, size: 1).format()
 
     //log.debug "association $state.association user: $userAssociatedDevice"
@@ -654,6 +659,8 @@ private getUserWakeUp(userWake)
     }  
     return userWake.toInteger()
 }
+
+
 
 // Get the Z-Wave Id of the binary switch the user wants the thermostat to control
 // -1 if no association set
