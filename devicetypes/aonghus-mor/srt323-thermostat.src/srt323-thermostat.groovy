@@ -219,9 +219,18 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelR
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 		//def map = [name:"thermostatWakeUp", value: "${device.displayName} woke up", isStateChange: true]
-        def map = [name:"wakeUp", value: "done", isStateChange: true]   
-        def event = createEvent(map)
+        def map = [name:"thermostatWakeUp", value: "", isStateChange: true]   
 		def cmds = updateIfNeeded()
+        if (cmds.size() > 0)
+    	{
+    		cmds << "delay 2000"
+            map.descriptionText = "Woke up: tasks completed."
+    	}
+        else
+        {
+        	map.descriptionText = "Woke up: nothing to do."
+        }
+        def event = createEvent(map)
         
 		cmds << zwave.wakeUpV2.wakeUpNoMoreInformation().format()
         
@@ -299,6 +308,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.Thermosta
         	log.debug "Invalid Zwave Operating State Event received: $cmd"
 	}
 	map.name = "thermostatOperatingState"
+    map.descriptionText = "Operating state: ${map.value}"
     log.debug "Operating State: ${map.value}"
 	createEvent(map)
 }
@@ -571,10 +581,6 @@ def updateIfNeeded()
         state.configNeeded = false
     }
     
-    if (cmds.size() > 0)
-    {
-    	cmds << "delay 2000"
-    }
     cmds
 }
 
