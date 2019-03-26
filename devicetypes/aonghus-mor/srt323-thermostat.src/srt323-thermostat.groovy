@@ -105,6 +105,12 @@ metadata
         {
         	input "deltaT", "decimal", title: "Temperature reporting step.", description: "Report Temperature when it changes by this step (0.1 - 10.0 C ).", defaultValue: 1.0, range: "0.1..10.0", required: false, displayDuringSetup: false
         }
+        section
+        {
+        	input "T101", "number", title: "Home Temperature (101):", defaultValue: 21, required: false, displayDuringSetup: false
+            input "T102", "number", title: "Away Temperature (102):", defaultValue: 15, required: false, displayDuringSetup: false
+            input "T103", "number", title: "Holiday Temperature (103):", defaultValue: 5, required: false, displayDuringSetup: false
+        }
         //if ( state.productId == 0x0004 )
 		//{
         //	section
@@ -379,7 +385,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
         break
       case 0x03:
       	double deltaT = cmd.configurationValue[0] * 0.1
-        log.debug "Temperture reporting step: ${deltaT}"
+        log.debug "Temperature reporting step: ${deltaT}"
         break
       default:
       	log.debug "Please check the parameter number"
@@ -468,20 +474,20 @@ def refresh()
 def quickSetHeat(degrees) 
 {
 	setHeatingSetpoint(degrees)
-	log.debug("Degrees at quicksetheat: $degrees")
+	// log.debug("Degrees at quicksetheat: $degrees")
 }
 
 def setTempUp() 
 { 
     def newtemp = device.currentValue("heatingSetpoint").toInteger() + 1
-    log.debug "Setting temp up: $newtemp"
+    // log.debug "Setting temp up: $newtemp"
     quickSetHeat(newtemp)
 }
 
 def setTempDown() 
 { 
     def newtemp = device.currentValue("heatingSetpoint").toInteger() - 1
-    log.debug "Setting temp down: $newtemp"
+    // log.debug "Setting temp down: $newtemp"
     quickSetHeat(newtemp)
 }
 
@@ -493,15 +499,31 @@ def setTemperature(temp)
 
 def setHeatingSetpoint(degrees) 
 {
-	//sendEvent(name: 'heatingSetpoint', value: degrees)
-    //setHeatingSetpoint(degrees.toDouble())
-	//log.debug("Degrees at setheatpoint: $degrees")
-//}
-
-//def setHeatingSetpoint(Double degrees) 
-//{
-	log.trace "setHeatingSetpoint($degrees)"
-    sendEvent(name: 'heatingSetpoint', value: degrees.toInteger())
+    // special codes, 100-103, are converted as below
+    int degs = Math.max(degrees.toInteger(), T103) // Don't let the setpoint go below the frost protection temperature
+    if ( degs > 99 ) 
+    {
+    	switch ( degs )
+        {
+        	case 100: 
+            	degs = state.previousSetpoint  // resets to the previous temperature setpoint 
+                break
+            case 101: 
+            	degs = T101  // sets to the temperature corresponding to code 101 in the preferences section of the DH
+                break
+            case 102:
+            	degs = T102  // ditto
+                break
+            case 103:
+            	degs = T103 // ditto
+                break
+            default:
+            	log.debug "Invalid setpoint: $degrees" // invalid special code. setpoint abandoned 
+                return
+        }
+    }
+    log.trace "setHeatingSetpoint($degrees) set to $degs"
+    sendEvent(name: 'heatingSetpoint', value: degs)
 
 	//def deviceScale = state.scale ?: 1
 	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
@@ -522,11 +544,12 @@ def setHeatingSetpoint(degrees)
     //    convertedDegrees = degrees
     //}
 
-	log.trace "setHeatingSetpoint scale: ${state.scale} precision: $p setpoint: ${degrees}"
+	//log.trace "setHeatingSetpoint scale: ${state.scale} precision: $p setpoint: ${degrees}"
 	//state.deviceScale = deviceScale
     state.p = p
     //state.p = 0
-    state.setpoint = (int)degrees
+    state.previousSetpoint = state.setpoint
+    state.setpoint = degs
     state.updateNeeded = true
     // thermostatMode
 }
@@ -540,12 +563,12 @@ def updateIfNeeded()
 {
 	def cmds = []
     
-    log.debug "updateIfNeeded"
+    //log.debug "updateIfNeeded"
     //cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
     //cmds << "delay 500"
    
     // Only ask for battery if we haven't had a BatteryReport in a while
-    if (!state.lastbatt || (new Date().time) - state.lastbatt > 24*60*60*1000) 
+    if (!state.lastbatt || (new Date().time) - state.lastbatt > 86400000 ) //24*60*60*1000 
     {
     	log.debug "Getting battery state"
     	cmds << zwave.batteryV1.batteryGet().format()
