@@ -109,7 +109,7 @@ metadata
         {
         	input "T101", "number", title: "Home Temperature (101):", defaultValue: 21, required: false, displayDuringSetup: false
             input "T102", "number", title: "Away Temperature (102):", defaultValue: 15, required: false, displayDuringSetup: false
-            input "T103", "number", title: "Holiday Temperature (103):", defaultValue: 5, required: false, displayDuringSetup: false
+            input "T103", "number", title: "Frost Protection Temperature (103):", defaultValue: 5, required: false, displayDuringSetup: false
         }
         //if ( state.productId == 0x0004 )
 		//{
