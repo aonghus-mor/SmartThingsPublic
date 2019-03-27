@@ -5,7 +5,7 @@ After the device has connected to the hub click the wheel symbol (top right) to 
 3) The minomum change of temperature to be reported back to the device handler.   Again a small value implies more frequent reporting and thus more battery usage.
 4) The remaining 3 parameters are only required in scenario B below.
 
-The device may be used in conjunction with @meavydev's scheduler, designed for the SRT321, or any other scheduler.  It can also be set from within various smartthings routines, such as "GoodBye" and "I'm Back"   In each case a temperature (an integer value) setpoint is chosen.   The term 'setpoint' is used for the temperature which the thermostat is set to achieve.  THe term 'temperature' is used for the measured temperature.
+The device may be used in conjunction with @meavydev's scheduler (https://github.com/meavydev/SmartThingsPublic/tree/master/smartapps/meavydev), designed for the SRT321, or any other scheduler.  It can also be set from within various smartthings routines, such as "GoodBye" and "I'm Back"   In each case a temperature (an integer value) setpoint is chosen.   The term 'setpoint' is used for the temperature which the thermostat is set to achieve.  THe term 'temperature' is used for the measured temperature.
 
 Note that the temperature scale, Celsius or Fahrenheit, is set for the location in the smartthings app.
 
