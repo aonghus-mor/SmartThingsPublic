@@ -225,18 +225,23 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelR
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 		//def map = [name:"thermostatWakeUp", value: "${device.displayName} woke up", isStateChange: true]
-        def map = [name:"thermostatWakeUp", value: "", isStateChange: true]   
+        def map = [name:"thermostatWakeUp", value: "", isStateChange: true, descriptionText: "Tasks completed."]   
 		def cmds = updateIfNeeded()
+        def events = []
         if (cmds.size() > 0)
     	{
     		cmds << "delay 2000"
-            map.descriptionText = "Woke up: tasks completed."
+            //map.name = "thermostatWakeUp"
+            //map.value = ""
+            //map.isStateChange = true
+            // map.descriptionText = "Pending tasks completed."
+            events << createEvent(map)
     	}
-        else
-        {
-        	map.descriptionText = "Woke up: nothing to do."
-        }
-        def event = createEvent(map)
+        //else
+        //{
+        	//map.descriptionText = "Woke up: nothing to do."
+        //}
+        //def event = createEvent(map)
         
 		cmds << zwave.wakeUpV2.wakeUpNoMoreInformation().format()
         
@@ -255,7 +260,9 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
         };
         [event]      
 */        
-        [event, response(delayBetween(cmds, 1000))]
+        //[event, response(delayBetween(cmds, 1000))]
+        events << response(delayBetween(cmds, 1000))
+        events
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) 
