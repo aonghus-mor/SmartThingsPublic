@@ -305,7 +305,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeRepor
 }
 
 //ThermostatOperatingStateReport added by Aonghus_Mor
-// retuned by the device when the temperature setting is changed.
+// returned by the device when the temperature setting is changed.
 // functionality the same as MeavyDev's ThermostatModeReport 
 def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.ThermostatOperatingStateReport cmd)
 {
