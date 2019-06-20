@@ -14,7 +14,8 @@
  *  01.10.2017 first release
  *  01.11.2018 Adapted the code to work with QBKG03LM
  *  21.04.2019 handling cluster 0006 to update the app device state when the buttons are pressed manually
- *             used code parts from: https://github.com/dschich/Smartthings/blob/master/devicetypes/dschich/Aqara-Switch-QBKG12LM.src/Aqara-Switch-QBKG12LM.groovy     
+ *             used code parts from: https://github.com/dschich/Smartthings/blob/master/devicetypes/dschich/Aqara-Switch-QBKG12LM.src/Aqara-Switch-QBKG12LM.groovy  
+ *  20.06.2019 modified by @aonghus-mor to correctly display the temperature, react properly to button 'hold' and to detect both buttons pressed simulataneously. 
  */
 
 metadata {
@@ -108,8 +109,6 @@ metadata {
     }
 }
 
-//runEvery30Minutes("updateTemp")
-
 // Parse incoming device messages to generate events
 def parse(String description)
 {
@@ -132,9 +131,6 @@ def parse(String description)
     }
 	if ( state.code > 0x0000 )
     	event = parseStateCode()
-
-	//log.debug "Parse returned $map"
-    //def results = map ? createEvent(map) : null
     
     //  send event for heartbeat
     //def cmds = [results]
@@ -257,13 +253,13 @@ private def parseReportAttributeMessage(String description) {
     	case "0000":
         	log.debug "Basic Cluster: $descMap"
             break
-    	case "0001":
+    	case "0001": //battery
         	if ( descMap.value == "0000" )
             	state.batteryPresent = false
         	else if (descMap.attrId == "0020")
 				resultMap = getBatteryResult(convertHexToInt(descMap.value / 2))
             break
- 		case "0002":
+ 		case "0002": // temperature
         	if ( descMap.attrId == "0000") {
     			def temp = convertHexToInt(descMap.value)
         		if ( getTemperatureScale() != "C" ) temp = celsiusToFahrenheit(temp)
@@ -273,7 +269,7 @@ private def parseReportAttributeMessage(String description) {
                 state.lastTempTime = (new Date()).time
             }
             break
- 		case "0006":
+ 		case "0006":  button press
         	//resultMap = 
             parseSwitchOnOff(descMap)
             break
@@ -291,7 +287,7 @@ private def parseReportAttributeMessage(String description) {
 
 def parseSwitchOnOff(Map descMap)
 {
-	//def resultMap = null
+	//parse messages on read attr cluster 0x0006
 	def onoff = descMap.value[-1] == "1"
 	switch ( descMap.endpoint )
     {
@@ -301,13 +297,13 @@ def parseSwitchOnOff(Map descMap)
         case "03":
         	state.code = state.code | (0x0020 | ( onoff ? 0x0010 : 0x0000 ) )
         	break
-        case "04":
+        case "04": // button 1 pressed
         	state.code = state.code | 0x0008
             break
-        case "05": 
+        case "05": // button 2 pressed
         	state.code = state.code | 0x0080
             break
-        case "06":
+        case "06": // botyh buttons pressed
         	state.code = state.code | 0x0100
             break
         default:
@@ -401,14 +397,6 @@ def refresh() {
      
      cmds
 }
-/*
-def configure () {
-	log.debug "configuring"
-    state.batteryPresent = true
-    return refesh()
-}
-*/
-
 
 private Integer convertHexToInt(hex) {
 	Integer.parseInt(hex,16)
