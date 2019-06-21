@@ -27,6 +27,8 @@ metadata {
         capability "Refresh"
         capability "Switch"
         capability "Temperature Measurement"
+        capability "Button"
+        capability "Momentary"
         
         command "on2"
         command "off2"
@@ -34,8 +36,8 @@ metadata {
         command "off1"
         
         attribute "switch2","ENUM", ["on","off"]
-        
         attribute "lastCheckin", "string"
+        attribute "lastPressType", "enum", ["soft","hard","double","held","refresh"]
         
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
     }
@@ -53,7 +55,8 @@ metadata {
 
     tiles(scale: 2) {
         multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
-            tileAttribute ("device.switch", key: "PRIMARY_CONTROL") { 
+            tileAttribute ("device.switch", key: "PRIMARY_CONTROL") 
+            { 
                 attributeState "on", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"turningOff"
                 attributeState "off", label:'${name}', action:"switch.on", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"turningOn"
                 attributeState "turningOn", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"On"
@@ -63,18 +66,21 @@ metadata {
             
             
             
-           	tileAttribute("device.lastCheckin", key: "SECONDARY_CONTROL") {
+           	tileAttribute("device.lastCheckin", key: "SECONDARY_CONTROL") 
+            {
     			attributeState("default", label:'Last Update: ${currentValue}',icon: "st.Health & Wellness.health9")
 		   	}
         }
         
-        standardTile("switch2", "device.switch2", width: 2, height: 2, canChangeIcon: true) {
+        standardTile("switch2", "device.switch2", width: 2, height: 2, canChangeIcon: true) 
+        {
 			state "off", label: '${name}', action: "on2", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
 			state "on", label: '${name}', action: "off2", icon: "st.switches.switch.on", backgroundColor: "#79b821"
             state "held", label:'${name}', action: "off2", icon:"st.switches.light.on", backgroundColor:"#ff0000"
 		}
 
-        valueTile("temperature", "device.temperature", width: 2, height: 2) {
+        valueTile("temperature", "device.temperature", width: 2, height: 2) 
+        {
 			state("temperature", label:'${currentValue}°',
 				backgroundColors:[
 					[value: 31, color: "#153591"],
@@ -87,7 +93,12 @@ metadata {
 				]
 			)
 		}
-        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+        valueTile("lastPressType","device.lastPressType", width: 2, height: 2)
+        {
+        	state "lastPressType", label: '${currentValue}'
+        }
+        standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) 
+        {
             state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
         
@@ -98,14 +109,16 @@ metadata {
       			state "battery", label:'${currentValue}% battery'
     		}
         }
+        
+        
         /*
         standardTile("configure", "device.configure", inactiveLabel: false, decoration: "flat", width: 2, height: 2) 
         {
 			state "configure", label:'', action:"configuration.configure", icon:"st.secondary.configure"
 		}
         */
-        main (["switch", "switch2", "temperature"])
-        details(["switch", "switch2", "temperature", "refresh", "battery"])
+        main ("switch")
+        details(["switch", "switch2", "lastPressType", "temperature", "refresh", "battery"])
     }
 }
 
@@ -115,7 +128,7 @@ def parse(String description)
    	log.debug "Parsing '${description}'"
    	log.debug "(parse)state.code: " + hexString(state.code)
   
-   	def event 
+   	def event
    
    	if (description?.startsWith('catchall:')) 
    	{
@@ -169,13 +182,15 @@ private def parseStateCode()
     // 0x0800 / 0x0C00 current event switch held / released
     //
     def events = []
+    def lastPress
     log.debug "parsing state code: " + hexString(state.code)
     def codeList = [0x0006, 0x000A, 0x0060, 0x00A0, 0x0122, 0x0222, 0x0244, 0x0802, 0x0820, 0x0C02, 0x0C20 ]
     if ( codeList.contains( state.code & 0xFFEE ) )
     {
-    	if ( state.code & 0x0800 )  // button held
+        if ( state.code & 0x0800 )  // button held
         {
-        	if ( state.code & 0x0400 )
+        	lastPress = "held"
+            if ( state.code & 0x0400 )
         	{
         		if ( state.code & 0x0002 )
     				events << createEvent(name: 'switch', value: 'off' )
@@ -193,13 +208,22 @@ private def parseStateCode()
         }
         else
         {
-			if ( state.code & 0x0006 )
+        	if ( state.code & 0x0100 )
+            	lastPress = "double"
+            else if ( state.code & 0x0200 )
+            	lastPress = "refresh"
+			else if ( state.code & 0x0044 )
+            	lastPress = "soft"
+            else if (state.code & 0x0088 )
+            	lastPress = "hard"
+            if ( state.code & 0x0006 )
     			events << createEvent(name: 'switch', value: (state.code & 0x0001) ? "on" : "off" )
     		if ( state.code & 0x0060 )
     			events << createEvent(name: 'switch2', value: (state.code & 0x0010) ? "on" : "off" ) 
             state.code = 0x0000
         }
-    	
+        events << createEvent(name: "lastPressType", value: lastPress) 
+    	log.debug "lastPressType: $lastPress"	
     }
     return events
 }
@@ -269,7 +293,7 @@ private def parseReportAttributeMessage(String description) {
                 state.lastTempTime = (new Date()).time
             }
             break
- 		case "0006":  button press
+ 		case "0006":  //button press
         	//resultMap = 
             parseSwitchOnOff(descMap)
             break
