@@ -1,0 +1,8 @@
+This is a smartthings device handler for the Xiaomi Aqara 2 button wired wall switch with no neutral connection.  
+It is based on work by @simic and @wastedabuser. 
+Only one of the 2 switches is required to be connected to the live + switched wire.  The other may be used as a soft switch.
+The device will also give the temperature (in integer degrees).
+The device responds to simple presses of the switch and to press and hold.  It does not respond to double presses.
+The additional attribute 'lastPressType' takes the values 'soft', 'hard', 'double', 'held', 'refresh', indicating the type of the last switching event.
+'double' indicates that both switches were pressed simulataneously.  
+'refresh' indicates that the 'refresh' icopn in the app was pressed. 
