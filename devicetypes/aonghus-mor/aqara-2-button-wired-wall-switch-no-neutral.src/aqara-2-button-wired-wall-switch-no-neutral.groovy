@@ -43,6 +43,7 @@ metadata {
     }
 
     // simulator metadata
+    /*
     simulator {
         // status messages
         status "on": "on/off: 1"
@@ -52,7 +53,7 @@ metadata {
         reply "zcl on-off on": "on/off: 1"
         reply "zcl on-off off": "on/off: 0"
     }
-
+	*/
     tiles(scale: 2) {
         multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
             tileAttribute ("device.switch", key: "PRIMARY_CONTROL") 
@@ -89,7 +90,15 @@ metadata {
 					[value: 74, color: "#44b621"],
 					[value: 84, color: "#f1d801"],
 					[value: 95, color: "#d04e00"],
-					[value: 96, color: "#bc2323"]
+					[value: 96, color: "#bc2323"],
+                    [value: 0, color: "#153591"],
+					[value: 7, color: "#1e9cbb"],
+					[value: 15, color: "#90d2a7"],
+					[value: 18, color: "#44b621"],
+					[value: 21, color: "#f1d801"],
+					[value: 24, color: "#d04e00"],
+					[value: 27, color: "#bc2323"]
+                    
 				]
 			)
 		}
@@ -101,15 +110,15 @@ metadata {
         {
             state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
-        
+        /*
         if ( state != null && state.batteryPresent )
         {
          	valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2) 
-            {
+        	{
       			state "battery", label:'${currentValue}% battery'
     		}
         }
-        
+        */
         
         /*
         standardTile("configure", "device.configure", inactiveLabel: false, decoration: "flat", width: 2, height: 2) 
@@ -271,25 +280,28 @@ private def parseReportAttributeMessage(String description) {
      }
 	//log.debug "Desc Map: $descMap"
  
-	Map resultMap = [:]
+	//Map resultMap = [:]
+    def event = null
     
     switch (descMap.cluster) {
     	case "0000":
         	log.debug "Basic Cluster: $descMap"
+            if ( descMap.attrId == "0007" && descMap.value != "03" )
+            	state.batteryPresent = false
             break
     	case "0001": //battery
         	if ( descMap.value == "0000" )
             	state.batteryPresent = false
         	else if (descMap.attrId == "0020")
-				resultMap = getBatteryResult(convertHexToInt(descMap.value / 2))
+				event = getBatteryResult(convertHexToInt(descMap.value / 2))
             break
  		case "0002": // temperature
         	if ( descMap.attrId == "0000") {
     			def temp = convertHexToInt(descMap.value)
         		if ( getTemperatureScale() != "C" ) temp = celsiusToFahrenheit(temp)
 				//resultMap = createEvent(name: "temperature", value: zigbee.parseHATemperatureValue("temperature: " + (convertHexToInt(descMap.value) / 2), "temperature: ", getTemperatureScale()), unit: getTemperatureScale())
-				resultMap = createEvent(name: "temperature", value: temp, unit: getTemperatureScale())
-				log.debug "Temperature Hex convert to ${resultMap.value}°"
+				event = createEvent(name: "temperature", value: temp, unit: getTemperatureScale())
+				log.debug "Temperature Hex convert to ${temp}°"
                 state.lastTempTime = (new Date()).time
             }
             break
@@ -299,13 +311,13 @@ private def parseReportAttributeMessage(String description) {
             break
  		case "0008":
         	if ( descMap.attrId == "0000") {
-    			resultMap = createEvent(name: "switch", value: "off")
+    			event = createEvent(name: "switch", value: "off")
 			}
             break
  		default:
         	log.debug "unknown cluster in $descMap"
     }
-	return ResultMap
+	return event
 	//return createEvent(resultMap)
 }
 
@@ -407,16 +419,19 @@ def refresh() {
 	log.debug "refreshing"
   	state.code = 0x0200
     //def cmds = zigbee.configureReporting(0x0002, 0x0000, 0x29, 1800, 7200, 0x01)
-    def cmds = zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
+    def cmds = //zigbee.readAttribute(0x0006,0x0002,[destEndpoint: 0x02]) + 
+     			//zigbee.readAttribute(0x0006,0x0002,[destEndpoint: 0x03]) +
+            	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
              	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] )
         
         
     cmds += zigbee.readAttribute(0x0002, 0) + 
-           zigbee.readAttribute(0x0000, 0)
+           zigbee.readAttribute(0x0000, 0x0007)
     //if ( state.batteryPresent )
-    	cmds += zigbee.readAttribute(0x0001, 0)
+    	cmds += zigbee.readAttribute(0x0001, 0) //+ zigbee.readAttribute(0x0001,0x0001) + zigbee.readAttribute(0x0001,0x0002)
                 
      //cmds += zigbee.configureReporting(0x0000, 0, 0x29, 1800,7200,0x01)
+     
      log.debug cmds
      
      cmds
