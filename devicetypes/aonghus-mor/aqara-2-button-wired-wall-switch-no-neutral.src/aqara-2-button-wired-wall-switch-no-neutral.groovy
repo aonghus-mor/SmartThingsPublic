@@ -418,6 +418,8 @@ def on2() {
 def refresh() {
 	log.debug "refreshing"
   	state.code = 0x0200
+	def dat = new Date()
+	state.lastTempTime = dat.time
     //def cmds = zigbee.configureReporting(0x0002, 0x0000, 0x29, 1800, 7200, 0x01)
     def cmds = //zigbee.readAttribute(0x0006,0x0002,[destEndpoint: 0x02]) + 
      			//zigbee.readAttribute(0x0006,0x0002,[destEndpoint: 0x03]) +
