@@ -6,3 +6,11 @@ The device responds to simple presses of the switch and to press and hold.  It d
 The additional attribute 'lastPressType' takes the values 'soft', 'hard', 'double', 'held', 'refresh', indicating the type of the last switching event.
 'double' indicates that both switches were pressed simulataneously.  
 'refresh' indicates that the 'refresh' icopn in the app was pressed. 
+
+The latest version can now treat the unwired switch as a button, which can be used in conjunction with 
+(e.g.) ABC (Advanced Button Controller).
+The DH is capable of detecting which switch, if any, is unwired.  
+However, I have decided to include a preference for initialising this to 'None', 'Left', or 'Right'.   
+The DH can correct this if it is chosen wrongly, but that is unlikely to be necessary.
+Note that the button smartapp will only ever see a single button, as one of the switches must be wired 
+and behave as a traditional on/off switch.
