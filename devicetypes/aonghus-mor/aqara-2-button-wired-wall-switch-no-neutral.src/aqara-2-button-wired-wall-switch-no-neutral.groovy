@@ -262,7 +262,9 @@ private def parseStateCode()
             	lastPress = "hard"
             if ( state.code & 0x0006 )
             {
-            	if ( unwiredSwitch == 'Left' )
+            	if ( state.unwired == null )
+                	state.unwired = unwiredSwitch
+                if ( state.unwired == 'Left' )
                 {
                 	displayDebugLog( "sending button pushed event from switch 1" )
                    	buttonpush()
@@ -272,7 +274,7 @@ private def parseStateCode()
             }
     		if ( state.code & 0x0060 )
             {
-            	if ( unwiredSwitch.value == 'Right' )
+            	if ( state.unwired == 'Right' )
     			{
                 	displayDebugLog( "sending button pushed event from switch 2" )
                     butonpush() 
@@ -292,9 +294,9 @@ private def parseStateCode()
 def clearButtonStatus()
 {
 	displayDebugLog( "Clearing Button Status" )
-	if ( unwiredSwitch == 'Left' )
+	if ( state.unwired == 'Left' )
     	sendEvent(name: 'switch', value: 'released', isStateChange: true)
-    else if ( unwiredSwitch == 'Right' )
+    else if ( state.unwired == 'Right' )
     	sendEvent(name: 'switch2', value: 'released', isStateChange: true)
 }
 
@@ -322,11 +324,13 @@ private def parseCatchAllMessage(String description) {
         		// event = updateTemp()
                 Map dtMap = dataMap(cluster.data)
                 displayDebugLog( "Map: " + dtMap )
-                if ( dtMap.get(110) == 0X0002 )
-                	unwiredSwitch = 'Left'
+                if ( state.unwired == null )
+                	state.unwired = unwiredSwitch
+                if ( dtMap.get(110) == 0x0002 )
+                	state.unwired = 'Left'
                 if ( dtMap.get(111) == 0x0002)
-                	unwiredSwitch = 'Right'
-                if ( unwiredSwitch != 'None' && !state.numButtons )
+                	state.unwired = 'Right'
+                if ( state.unwired != 'None' && !state.numButtons )
                 {
                 	state.numButtons = 1
                     sendEvent(name: 'numberOfButtons', value: state.numButtons, displayed: false )
@@ -339,7 +343,7 @@ private def parseCatchAllMessage(String description) {
                     if ( getTemperatureScale() != "C" ) temp = celsiusToFahrenheit(temp)
 					event = createEvent(name: "temperature", value: temp, unit: getTemperatureScale())
             	}
-                displayInfoLog( "Unwired Switch is ${unwiredSwitch}" )
+                displayInfoLog( "Unwired Switch is ${state.unwired}" )
                 displayInfoLog( "Switches are (" + (dtMap.get(100) ? "on" : "off") + "," + (dtMap.get(101) ? "on" : "off") +")" )
                 displayInfoLog( "Temperature is now ${state.tempNow}°" )
             }
@@ -513,6 +517,7 @@ def refresh() {
   	state.code = 0x0200
     def dat = new Date()
     state.lastTempTime = dat.time
+    state.unwired = unwiredSwitch
     //def cmds = zigbee.configureReporting(0x0002, 0x0000, 0x29, 1800, 7200, 0x01)
     def cmds = zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
              	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] )
