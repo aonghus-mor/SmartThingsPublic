@@ -191,7 +191,7 @@ def parse(String description)
     state.lastCheckTime = newcheck
     state.lastStateCode = state.code
     def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone)
-    sendEvent(name: "lastCheckin", value: now, descriptionText: "Check-In")
+    sendEvent(name: "lastCheckin", value: now, descriptionText: "Check-In", displayed: debugLogging)
     
     displayDebugLog( "Parse returned: $event" )
     return event
@@ -585,7 +585,7 @@ private Map dataMap(data)
             	resultMap.put(lbl, (int)((data.get(it+3)<<8) | data.get(it+2)))
                 it = it + 4
                 break   
-            default: displayDebugLog( "unrecognised type in dataMap: " + hexString(type) )
+            default: displayDebugLog( "unrecognised type in dataMap: " + zigbee.convertToHexString(type) )
             	return resultMap
         }
     }
