@@ -69,7 +69,8 @@ metadata {
                 attributeState("off", label:'${name}', action:"switch.on", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"turningOn")
                 attributeState("turningOn", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"on")
                 attributeState("turningOff", label:'${name}', action:"switch.on", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off")
-                attributeState("held", label:'${name}', action: "switch.off", icon:"st.switches.light.on", backgroundColor:"#ff0000")
+                attributeState("held", label:'${name}', action: "switch.off", backgroundColor:"#ff0000",
+                				icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png")
                 attributeState("released", label:'${name}', action: "buttonpush", backgroundColor:"#ffffff",
                 				icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonReleased.png")
                 attributeState("pushed", label:'${name}', action: "switch.off", backgroundColor:"#00a0dc", 
@@ -88,9 +89,10 @@ metadata {
 			state "on", label: '${name}', action: "off2", icon: "st.switches.switch.on", backgroundColor: "#79b821"
             state "turningOn", label:'${name}', action:"switch.off2", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"on"
             state "turningOff", label:'${name}', action:"switch.on2", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off"
-            state "held", label:'${name}', action: "off2", icon:"st.switches.light.on", backgroundColor:"#ff0000"
+            state "held", label:'${name}', action: "off2", backgroundColor:"#ff0000",
+            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
             state "released", label:'${name}', action: "buttonpush", backgroundColor:"#ffffff",
-            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonRelesed.png"
+            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonReleased.png"
             state "pushed", label:'${name}', action: "off2", backgroundColor:"#00a0dc", 
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"	
 		}
@@ -148,6 +150,7 @@ metadata {
     {
     	input name: "unwiredSwitch", type: "enum", options: ['None', 'Left', 'Right'], title: "Identify the unwired switch", 
         							required: true, displayDuringSetup: true
+        input "tempOffset", "decimal", title:"Temperature Offset", description:"Adjust temperature by this many degrees", range:"*..*", defaultValue: 0                          
         input name: "infoLogging", type: "bool", title: "Display info log messages?", defaultValue: true
 		input name: "debugLogging", type: "bool", title: "Display debug log messages?"
     }
@@ -157,7 +160,15 @@ metadata {
 def parse(String description)
 {
    	displayDebugLog( "Parsing '${description}'" )
-   	displayDebugLog( "(parse)state.code: " + hexString(state.code) )
+    def dat = new Date()
+    def newcheck = dat.time
+    state.lastCheckTime = state.lastCheckTime == null ? 0 : state.lastCheckTime
+    def diffcheck = newcheck - state.lastCheckTime
+    //displayDebugLog(newcheck + " " + state.lastCheckTime + " " + diffcheck)
+    if ( diffcheck > 2000 )
+    	clearFlags()
+    state.lastCheckTime = newcheck
+    displayDebugLog( "(parse)flags: " + showFlags() )
   
    	def event
    
@@ -173,28 +184,20 @@ def parse(String description)
     {
         parseCustomMessage(description) 
     }
-	if ( state.code > 0x0000 )
-    	event = parseStateCode()
+    event = parseFlags()
     
-    //  send event for heartbeat
-    //def cmds = [results]
-    def dat = new Date()
-    def newcheck = dat.time
-    state.lastCheckTime = state.lastCheckTime == null ? 0 : state.lastCheckTime
-    state.lastStateCode = state.lastStateCode == null ? 0 : state.lastStateCode
-    if ( newcheck - state.lastCheckTime > 60000 ) // get rid of rogue state.code values
-    	if ( state.code > 0x0000 && state.code == state.lastStateCode )
-        {
-            log.debug "State Code reset from ${state.code} to zero"
-            state.code = 0x0000
-        }
-    state.lastCheckTime = newcheck
-    state.lastStateCode = state.code
+    displayDebugLog("After parse: " + showFlags())
+    
     def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone)
     sendEvent(name: "lastCheckin", value: now, descriptionText: "Check-In", displayed: debugLogging)
     
     displayDebugLog( "Parse returned: $event" )
     return event
+}
+
+private def showFlags()
+{
+	return state.flag + " " + state.sw1 + " " + state.sw2 + " " + state.lastCheckTime
 }
 
 def updateTemp()
@@ -211,6 +214,97 @@ def updateTemp()
 	return cmd
 }
 
+private def parseFlags()
+{
+    def events = []
+    def lastPress
+    def makeEvent = true
+    displayDebugLog( "parsing flags: " + showFlags() )
+   
+    switch( state.flag )
+    {
+    	case "held":
+        	if ( state.sw1 != null )
+    		{
+            	if ( state.unwired == "Left" )
+                	events << createEvent(name: 'button', value: 'held', data:[buttonNumber: 1], isStateChange: true)
+                events << createEvent(name: 'switch', value: 'held' )
+            }
+            else if ( state.sw2 != null )
+            {
+            	if ( state.unwired == "Right" )
+                	events << createEvent(name: 'button', value: 'held', data:[buttonNumber: 1], isStateChange: true)
+                events << createEvent(name: 'switch2', value: 'held' )
+            }
+           	lastPress = "held"
+            makeEvent = false
+            break
+         case "released":
+         	if ( state.sw1 != null )
+            {
+            	//if ( state.unwired == "Left" )
+                //	events << createEvent(name: 'button', value: 'released', data:[buttonNumber: 1], isStateChange: true)
+    			events << createEvent(name: 'switch', value: 'released' )
+    		}
+            else if ( state.sw2 != null )
+            {
+            	//if ( state.unwired == "Right" )
+                //	events << createEvent(name: 'button', value: 'released', data:[buttonNumber: 1], isStateChange: true)
+    			events << createEvent(name: 'switch2', value: 'released' )
+            }
+            lastPress = "released"
+            clearFlags()
+            break
+         case "both":
+         case "refresh":
+         case "soft":
+         case "hard":
+            if ( state.sw1 != null )
+            {
+            	if ( state.unwired == null )
+                	state.unwired = unwiredSwitch
+                if ( state.unwired == 'Left' )
+                {
+                	displayDebugLog( "sending button pushed event from switch 1" )
+                    events << createEvent(name: 'switch', value: 'pushed', isStateChange: true )
+                   	buttonpush()
+                }
+                else
+    				events << createEvent(name: 'switch', value: state.sw1 )
+            }
+            else if ( state.sw2 != null )
+            {
+            	if ( state.unwired == 'Right' )
+    			{
+                	displayDebugLog( "sending button pushed event from switch 2" )
+                    events << createEvent(name: 'switch2', value: 'pushed', isStateChange: true )
+                    buttonpush() 
+                } 
+                else
+                	events << createEvent(name: 'switch2', value: state.sw2 )
+            }
+            else
+            	makeEvent = false
+            if ( makeEvent )
+            {
+            	lastPress = state.flag
+                displayDebugLog( "clearing flags" )
+            	clearFlags()
+            }
+            break
+        default:
+        	break
+    }
+    if ( lastPress != null )
+    {
+    	events << createEvent(name: "lastPressType", value: lastPress) 
+   		displayDebugLog( "lastPressType: $lastPress" )
+    }
+    //displayDebugLog("End of parse flags: " + showFlags())
+  	events
+}
+
+/*
 private def parseStateCode()
 {
 	// state.code is a binary pattern where the bits are defined as follows
@@ -227,12 +321,17 @@ private def parseStateCode()
     def lastPress
     displayDebugLog( "parsing state code: " + hexString(state.code) )
     def codeList = [0x0006, 0x000A, 0x0060, 0x00A0, 0x0122, 0x0222, 0x0244, 0x0802, 0x0820, 0x0C02, 0x0C20 ]
+    
     if ( codeList.contains( state.code & 0xFFEE ) )
     {
         if ( state.code & 0x0800 )  // button held
         {
-        	
-            if ( state.code & 0x0400 )
+        	if ( state.code & 0x0300 )  // invalid setting
+            {
+            	displayDebugLog("Invalid State Code " + hesString(state.code) + "reset to zero")
+            	state.code = 0x0000
+            }
+            else if ( state.code & 0x0400 )
         	{
         		if ( state.code & 0x0002 )
     				events << createEvent(name: 'switch', value: 'released' )
@@ -288,8 +387,10 @@ private def parseStateCode()
         events << createEvent(name: "lastPressType", value: lastPress) 
     	displayDebugLog( "lastPressType: $lastPress" )	
     }
+    displayDebugLog("End of parse state code :" + hexString(state.code))
   	events
 }
+*/
 
 def clearButtonStatus()
 {
@@ -298,15 +399,25 @@ def clearButtonStatus()
     	sendEvent(name: 'switch', value: 'released', isStateChange: true)
     else if ( state.unwired == 'Right' )
     	sendEvent(name: 'switch2', value: 'released', isStateChange: true)
+    clearFlags()
 }
 
 def buttonpush()
 {
 	 sendEvent(name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true)
-     sendEvent(name: 'switch', value: 'pushed', isStateChange: true)
+     //sendEvent(name: 'switch', value: 'pushed', isStateChange: true)
      runIn(1, clearButtonStatus)
-     if ( state.code == 0x0000 )
-     	sendEvent(name: "lastPressType", value: 'soft') 
+     //if ( state.code == 0x0000 )
+	 if ( state.flag == null )
+		sendEvent(name: "lastPressType", value: 'soft') 
+}
+
+private def clearFlags()
+{
+	state.flag = null
+    state.sw1 = null
+    state.sw2 = null
+    displayDebugLog("Flags cleared.")
 }
 
 private def parseCatchAllMessage(String description) {
@@ -319,7 +430,7 @@ private def parseCatchAllMessage(String description) {
     {
     	case 0x0000: 
          	//state.code = 0x0000
-            if ( cluster.command == 0x0a )
+            if ( cluster.command == 0x0a && cluster.data[0] == 0x01 )
             {
         		// event = updateTemp()
                 Map dtMap = dataMap(cluster.data)
@@ -339,8 +450,9 @@ private def parseCatchAllMessage(String description) {
                 def temp = dtMap.get(3)
                 if ( state.tempNow == null || state.tempNow != temp )
                 {
-            		state.tempNow = temp
-                    if ( getTemperatureScale() != "C" ) temp = celsiusToFahrenheit(temp)
+                    if ( getTemperatureScale() != "C" ) 
+                    	temp = celsiusToFahrenheit(temp)
+                    state.tempNow = temp + tempOffset
 					event = createEvent(name: "temperature", value: temp, unit: getTemperatureScale())
             	}
                 displayInfoLog( "Unwired Switch is ${state.unwired}" )
@@ -349,20 +461,23 @@ private def parseCatchAllMessage(String description) {
             }
         	break
         case 0x0006: 	
-        	def onoff = cluster.data[0] == 0x01
+        	def onoff = cluster.data[0] == 0x01 ? "on" : "off"
         	switch ( cluster.sourceEndpoint) 
             {
         		case 0x02:
-                    state.code = state.code | ( 0x0004 | ( onoff ? 0x0001 : 0x0000 ) )
-                    break
-                case 0x04:
-                	state.code = state.code | 0x0004
+                    //state.code = state.code | ( 0x0004 | ( onoff ? 0x0001 : 0x0000 ) )
+                    state.sw1 = onoff
                     break
                 case 0x03:
-                	state.code = state.code | (0x0040 | ( onoff ? 0x0010 : 0x0000 ) )
+                	//state.code = state.code | (0x0040 | ( onoff ? 0x0010 : 0x0000 ) )
+                    state.sw2 = onoff 
                 	break
+                case 0x04:
+                	//state.code = state.code | 0x0004
+                    //break
                 case 0x05:
-                	state.code = state.code | 0x0040
+                	//state.code = state.code | 0x0040
+                    state.flag = "soft"
                     break
                 default:
                 	displayDebugLog( "Unknown SourceEndpoint: $cluster.sourceEndpoint" )
@@ -411,9 +526,8 @@ private def parseReportAttributeMessage(String description) {
             parseSwitchOnOff(descMap)
             break
  		case "0008":
-        	if ( descMap.attrId == "0000") {
+        	if ( descMap.attrId == "0000")
     			event = createEvent(name: "switch", value: "off")
-			}
             break
  		default:
         	displayDebugLog( "unknown cluster in $descMap" )
@@ -425,28 +539,32 @@ private def parseReportAttributeMessage(String description) {
 def parseSwitchOnOff(Map descMap)
 {
 	//parse messages on read attr cluster 0x0006
-	def onoff = descMap.value[-1] == "1"
+	def onoff = descMap.value[-1] == "1" ? "on" : "off"
 	switch ( descMap.endpoint )
     {
     	case "02":
-        	state.code = state.code | (0x0002 | ( onoff ? 0x0001 : 0x0000 ) )
+        	//state.code = state.code | (0x0002 | ( onoff ? 0x0001 : 0x0000 ) )
+            state.sw1 = onoff
             break
         case "03":
-        	state.code = state.code | (0x0020 | ( onoff ? 0x0010 : 0x0000 ) )
+        	//state.code = state.code | (0x0020 | ( onoff ? 0x0010 : 0x0000 ) )
+            state.sw2 = onoff
         	break
         case "04": // button 1 pressed
-        	state.code = state.code | 0x0008
-            break
+        	//state.code = state.code | 0x0008
+            //break
         case "05": // button 2 pressed
-        	state.code = state.code | 0x0080
+        	//state.code = state.code | 0x0080
+            state.flag = "hard"
             break
-        case "06": // botyh buttons pressed
-        	state.code = state.code | 0x0100
-            break
+        case "06": // both buttons pressed
+        	//state.code = state.code | 0x0100
+			state.flag = "both"
+		break
         default:
         	displayDebugLog( "ClusterID 0x0006 with unknown endpoint $descMap.endpoint" )
      }
-     //log.debug "$descMap.endpoint  $state.code"
+     displayDebugLog("$descMap.endpoint " + showFlags())
 }
 
 private def parseCustomMessage(String description) {
@@ -454,10 +572,12 @@ private def parseCustomMessage(String description) {
     displayDebugLog( "Parsing Custom Message: $description" )
 	if (description?.startsWith('on/off: ')) {
     	if (description == 'on/off: 0')
-        	state.code = state.code | 0x0800
+        	state.flag = "held"
+        	//state.code = state.code | 0x0800
     		//result = createEvent(name: "switch", value: "off")
     	else if (description == 'on/off: 1')
-        	state.code = state.code | 0x0C00
+        	state.flag = "released"
+        	//state.code = state.code | 0x0C00
     		//result = createEvent(name: "switch", value: "on")
 	}
     
@@ -514,7 +634,9 @@ def on2() {
 
 def refresh() {
 	displayInfoLog( "refreshing" )
-  	state.code = 0x0200
+  	//state.code = 0x0200
+    clearFlags()
+    state.flag = "refresh"
     def dat = new Date()
     state.lastTempTime = dat.time
     state.unwired = unwiredSwitch
