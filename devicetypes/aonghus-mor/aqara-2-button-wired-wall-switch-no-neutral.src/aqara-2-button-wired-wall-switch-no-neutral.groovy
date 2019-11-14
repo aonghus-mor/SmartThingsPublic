@@ -44,6 +44,7 @@ metadata {
         command "leftButtonPush"
         command "rightButtonPush"
         
+        attribute "switch1","ENUM", ["on","off"]
         attribute "switch2","ENUM", ["on","off"]
         attribute "lastCheckin", "string"
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh"]
@@ -100,8 +101,8 @@ metadata {
         {
 			state "off", label: '${name}', action: "on1", icon: "st.switches.light.off", backgroundColor: "#ffffff", nextState: "turningOn"
 			state "on", label: '${name}', action: "off1", icon: "st.switches.light.on", backgroundColor: "#79b821", nextState: "turningOff"
-            state "turningOn", label:'${name}', action:"switch.off1", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"on"
-            state "turningOff", label:'${name}', action:"switch.on1", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off"
+            state "turningOn", label:'${name}', action:"off1", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"on"
+            state "turningOff", label:'${name}', action:"on1", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off"
             state "held", label:'${name}', backgroundColor:"#ff0000",
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
             state "released", label:'${name}', action:"leftButtonPush", backgroundColor:"#ffffff", nextState: "pushed",
@@ -114,8 +115,8 @@ metadata {
         {
 			state "off", label: '${name}', action: "on2", icon: "st.switches.light.off", backgroundColor: "#ffffff", nextState: "turningOn"
 			state "on", label: '${name}', action: "off2", icon: "st.switches.light.on", backgroundColor: "#79b821", nextState: "turningOff"
-            state "turningOn", label:'${name}', action:"switch.off2", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"on"
-            state "turningOff", label:'${name}', action:"switch.on2", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off"
+            state "turningOn", label:'${name}', action:"off2", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"on"
+            state "turningOff", label:'${name}', action:"on2", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off"
             state "held", label:'${name}', backgroundColor:"#ff0000",
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
             state "released", label:'${name}', action: "rightButtonPush", backgroundColor:"#ffffff", nextState: "pushed",
@@ -184,7 +185,7 @@ metadata {
     {
     	input name: "unwiredSwitch", type: "enum", options: ['None', 'Left', 'Right'], title: "Identify the unwired switch", 
         							required: true, displayDuringSetup: true
-        input "tempOffset", "decimal", title:"Temperature Offset", description:"Adjust temperature by this many degrees", range:"*..*", defaultValue: 0                          
+        input name: "tempOffset", type: "decimal", title:"Temperature Offset", description:"Adjust temperature by this many degrees", range:"*..*", defaultValue: 0                          
         input name: "infoLogging", type: "bool", title: "Display info log messages?", defaultValue: true
 		input name: "debugLogging", type: "bool", title: "Display debug log messages?"
     }
@@ -194,6 +195,8 @@ metadata {
 def parse(String description)
 {
    	displayDebugLog( "Parsing '${description}'" )
+    //Map testmap = zigbee.parseDescriptionAsMap(description)
+    //displayDebugLog("As Map: " + testmap)
     def dat = new Date()
     def newcheck = dat.time
     state.lastCheckTime = state.lastCheckTime == null ? 0 : state.lastCheckTime
@@ -495,10 +498,10 @@ private def parseReportAttributeMessage(String description)
  		case "0006":  //button press
         	parseSwitchOnOff(descMap)
             break
- 		case "0008":
-        	if ( descMap.attrId == "0000")
-    			event = createEvent(name: "switch", value: "off")
-            break
+ 		//case "0008":
+        //	if ( descMap.attrId == "0000")
+    	//		event = createEvent(name: "switch", value: "off")
+        //    break
  		default:
         	displayDebugLog( "unknown cluster in $descMap" )
     }
@@ -541,23 +544,15 @@ private def parseCustomMessage(String description)
 	}
 }
 
-def off() 
+def on() 
 {
-    displayDebugLog( "off()" )
-	if ( state.unwired == 'Left' )
-    {	
-    	leftButtonPush()
-        return []
-    }
-    sendEvent(name: "switch", value: "off")
-    def cmd = zigbee.command(0x0006, 0x00, "", [destEndpoint: 0x02] )
-    displayDebugLog( cmd )
+    def cmd = on()
     cmd
 }
 
-def on() 
+def on1() 
 {
-    displayDebugLog( "on()" )
+    displayDebugLog( "on1()" )
 	if ( state.unwired == 'Left' )
     {	
     	leftButtonPush()
@@ -566,18 +561,39 @@ def on()
     sendEvent(name: "switch1", value: "on")
 	def cmd = zigbee.command(0x0006, 0x01, "", [destEndpoint: 0x02] )
     displayDebugLog( cmd )
+    cmd 
+}
+
+def on2() {
+   	displayDebugLog( "on2()" )
+	if ( state.unwired == 'Right' )
+    {	leftButtonPush()
+        return []
+    }
+    sendEvent(name: "switch2", value: "on")
+	//"st cmd 0x${device.deviceNetworkId} 3 6 1 {}"
+    def cmd = zigbee.command(0x0006, 0x01, "",[destEndpoint: 0x03] )
+    displayDebugLog( cmd )
     cmd
 }
 
-def on1() 
+def off() 
 {
-    def cmd = on()
+	def cmd = off1()
     cmd
 }
 
 def off1() 
 {
-    def cmd = off()
+	displayDebugLog( "off1()" )
+	if ( state.unwired == 'Left' )
+    {	
+    	leftButtonPush()
+        return []
+    }
+    sendEvent(name: "switch1", value: "off")
+    def cmd = zigbee.command(0x0006, 0x00, "", [destEndpoint: 0x02] )
+    displayDebugLog( cmd )
     cmd
 }
 
@@ -594,22 +610,8 @@ def off2() {
     cmd
 }
 
-def on2() {
-   	displayDebugLog( "on2()" )
-	if ( state.unwired == 'Right' )
-    {	leftButtonPush()
-        return []
-    }
-    sendEvent(name: "switch2", value: "on")
-	//"st cmd 0x${device.deviceNetworkId} 3 6 1 {}"
-    def cmd = zigbee.command(0x0006, 0x01, "",[destEndpoint: 0x03] )
-    displayDebugLog( cmd )
-    cmd
-}
-
 def refresh() {
 	displayInfoLog( "refreshing" )
-  	//state.code = 0x0200
     clearFlags()
     state.flag = "refresh"
     def dat = new Date()
@@ -618,9 +620,11 @@ def refresh() {
     state.tempNow = state.tempNow == null ? 0 : state.tempNow
     state.tempNow2 = state.tempNow2 == null ? 0 : state.tempNow2
     //def cmds = zigbee.configureReporting(0x0002, 0x0000, 0x29, 1800, 7200, 0x01)
-    def cmds = zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
-             	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] )
-        
+    def cmds = zigbee.readAttribute(0x0006,0,[destEndpoint: 0x01] ) + 
+    			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
+             	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] ) +
+        		zigbee.readAttribute(0x0006,0,[destEndpoint: 0x04] ) + 
+             	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x05] )
         
     cmds += zigbee.readAttribute(0x0002, 0) + 
            zigbee.readAttribute(0x0000, 0x0007)
