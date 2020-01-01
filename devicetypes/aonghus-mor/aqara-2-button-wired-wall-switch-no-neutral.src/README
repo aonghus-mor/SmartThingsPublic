@@ -2,15 +2,24 @@ This is a smartthings device handler for the Xiaomi Aqara 2 button wired wall sw
 It is based on work by @simic and @wastedabuser. 
 Only one of the 2 switches is required to be connected to the live + switched wire.  The other may be used as a soft switch.
 The device will also give the temperature (in integer degrees).
-The device responds to simple presses of the switch and to press and hold.  It does not respond to double presses.
-The additional attribute 'lastPressType' takes the values 'soft', 'hard', 'double', 'held', 'refresh', indicating the type of the last switching event.
+The device responds to simple presses of the switch and to press and hold.  
+It does not distinguish between double press and press & hold.
+The additional attribute 'lastPressType' takes the values 'soft', 'hard', 'double', 'held', 'refresh', 
+indicating the type of the last switching event.
 'double' indicates that both switches were pressed simulataneously.  
-'refresh' indicates that the 'refresh' icopn in the app was pressed. 
+'refresh' indicates that the 'refresh' icon in the app was pressed. 
 
-The latest version can now treat the unwired switch as a button, which can be used in conjunction with 
-(e.g.) ABC (Advanced Button Controller).
+The unwired switch is treated as a button, which can be used in conjunction with (e.g.) ABC (Advanced Button Controller).  
+In this case ABC sees it as 'button 1'.
+If both switches are pressed simultaneously, ABC will see 'button 2' as pressed.
+
+SmartThings does not cope well with devices with more than one 'endpoint', such as a double switch.  
+However, this DH works well in connection with @erocm1231's 'Virtual Device Sync' app, 
+which is designed to overcome this limitation.
+
 The DH is capable of detecting which switch, if any, is unwired.  
 However, I have decided to include a preference for initialising this to 'None', 'Left', or 'Right'.   
 The DH can correct this if it is chosen wrongly, but that is unlikely to be necessary.
-Note that the button smartapp will only ever see a single button, as one of the switches must be wired 
-and behave as a traditional on/off switch.
+
+The latest version of the DH works with the new Samsung SmartThings App as well as with the Classic App.   
+However, the interface within the new App still needs some work.
