@@ -18,6 +18,7 @@
  *  20.06.2019 modified by @aonghus-mor to correctly display the temperature, react properly to button 'hold' and to detect both buttons pressed simulataneously. 
  *  13.08.2019 modified by @aonghus-mor to recognize whether each switch is wired and to allow the unwired switch to behave as a button or toggle
  *  12.10.2019 modified by @aonghus-mor to reorganise the main app screen to make each switch have equal weight.  Added button2 as a response to both switches being pressed simultaneously,
+ *	01.01.2020 modified by @aonghus-mor to work with the new Smartthings App.  Although it works the interface in the new App needs some work.
  */
  
 import groovy.json.JsonOutput
@@ -25,8 +26,10 @@ import physicalgraph.zigbee.zcl.DataType
 
 metadata {
     //definition (name: "Aqara 2 Button Wired Wall Switch No Neutral", namespace: "simic", author: "simic") 
-    definition (name: "Aqara 2 Button Wired Wall Switch No Neutral", namespace: "aonghus-mor", author: "aonghus-mor")
+    definition (name: "Aqara 2 Button Wired Wall Switch No Neutral", namespace: "aonghus-mor", author: "aonghus-mor", 
+    			 mnmn: "LUMI", vid: "Xiaomi-QBKG03LM", ocfDeviceType: "x.com.st.d.remotecontroller")
     {
+    // mnmn: "SmartThings", vid: "SmartThings-smartthings-Xiaomi-QBKG03LM", minHubCoreVersion: "000.028.00012"
         capability "Actuator"
         capability "Configuration"
         capability "Refresh"
@@ -34,6 +37,7 @@ metadata {
         capability "Temperature Measurement"
         capability "Button"
         capability "Momentary"
+        capability "Health Check"
         
         command "on2"
         command "off2"
@@ -49,7 +53,8 @@ metadata {
         attribute "lastCheckin", "string"
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh"]
         
-        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", 
+        		manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
     }
 
     // simulator metadata
@@ -95,7 +100,7 @@ metadata {
     			attributeState("default", label:'Last Update: ${currentValue}',icon: "st.Health & Wellness.health9")
 		   	}
         }
-        */   
+        */
         
         standardTile("switch1", "device.switch1", width: 3, height: 3, canChangeIcon: false) 
         {
@@ -110,7 +115,7 @@ metadata {
             state "pushed", label:'${name}', backgroundColor:"#008800", 
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"	
 		}
-        
+       
         standardTile("switch2", "device.switch2", width: 3, height: 3, canChangeIcon: false) 
         {
 			state "off", label: '${name}', action: "on2", icon: "st.switches.light.off", backgroundColor: "#ffffff", nextState: "turningOn"
@@ -124,7 +129,7 @@ metadata {
             state "pushed", label:'${name}', backgroundColor:"#008800", 
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"	
 		}
-
+	
         valueTile("temperature", "device.temperature", width: 2, height: 2) 
         {
 			state("temperature", label:'${currentValue}°',
@@ -564,7 +569,8 @@ def on1()
     cmd 
 }
 
-def on2() {
+def on2() 
+{
    	displayDebugLog( "on2()" )
 	if ( state.unwired == 'Right' )
     {	leftButtonPush()
@@ -597,7 +603,8 @@ def off1()
     cmd
 }
 
-def off2() {
+def off2() 
+{
     displayDebugLog( "off2()" )
 	if ( state.unwired == 'Right' )
     {	leftButtonPush()
@@ -610,7 +617,8 @@ def off2() {
     cmd
 }
 
-def refresh() {
+def refresh() 
+{
 	displayInfoLog( "refreshing" )
     clearFlags()
     state.flag = "refresh"
@@ -634,11 +642,13 @@ def refresh() {
      //cmds += zigbee.configureReporting(0x0000, 0, 0x29, 1800,7200,0x01)
     
      displayDebugLog( cmds )
+     updated()
      
      cmds
 }
 
-private Integer convertHexToInt(hex) {
+private Integer convertHexToInt(hex) 
+{
 	Integer.parseInt(hex,16)
 }
 
@@ -701,8 +711,32 @@ private def displayDebugLog(message)
 		log.debug "${device.displayName} ${message}"
 }
 
-private def displayInfoLog(message) {
+private def displayInfoLog(message) 
+{
 	//if (infoLogging || state.prefsSetCount < 3)
     if (infoLogging)
 		log.info "${device.displayName} ${message}"
 }
+
+/*
+def ping() 
+{
+    def dat = new Date()
+    def newcheck = dat.time
+    displayDebugLog("Pinged: "+ newcheck + " " + state.lastCheckTime)
+	return newcheck - state.lastCheckTime < (15 * 60 * 1000)
+}
+
+def installed() 
+{
+// Device wakes up every 15mins, this interval allows us to miss one wakeup notification before marking offline
+	log.debug "Configured health checkInterval when installed()"
+	sendEvent(name: "checkInterval", value: 15 * 60, displayed: false, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
+}
+
+def updated() {
+// Device wakes up every 1 hours, this interval allows us to miss one wakeup notification before marking offline
+	log.debug "Configured health checkInterval"
+	sendEvent(name: "checkInterval", value: 15 * 60, displayed: false, data: [protocol: "zigbee", hubHardwareId: device.hub.hardwareID])
+}
+*/
