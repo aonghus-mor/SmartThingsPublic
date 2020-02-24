@@ -25,11 +25,10 @@ import groovy.json.JsonOutput
 import physicalgraph.zigbee.zcl.DataType
 
 metadata {
-    //definition (name: "Aqara 2 Button Wired Wall Switch No Neutral", namespace: "simic", author: "simic") 
     definition (name: "Aqara 2 Button Wired Wall Switch No Neutral", namespace: "aonghus-mor", author: "aonghus-mor", 
-    			 mnmn: "LUMI", vid: "Xiaomi-QBKG03LM", ocfDeviceType: "x.com.st.d.remotecontroller")
+    			 mnmn: "LUMI", vid: "generic-switch", ocfDeviceType: "oic.d.switch")
     {
-    // mnmn: "SmartThings", vid: "SmartThings-smartthings-Xiaomi-QBKG03LM", minHubCoreVersion: "000.028.00012"
+    // mnmn: "SmartThings", vid: "SmartThings-smartthings-Xiaomi-QBKG03LM", minHubCoreVersion: "000.028.00012", ocfDeviceType: "x.com.st.d.remotecontroller"
         capability "Actuator"
         capability "Configuration"
         capability "Refresh"
@@ -48,8 +47,8 @@ metadata {
         command "leftButtonPush"
         command "rightButtonPush"
         
-        attribute "switch1","ENUM", ["on","off"]
-        attribute "switch2","ENUM", ["on","off"]
+        attribute "switch1","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed"]
+        attribute "switch2","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed"]
         attribute "lastCheckin", "string"
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh"]
         
@@ -183,9 +182,10 @@ metadata {
 		}
         */	
         
-        //main ("switch")
+        main (["switch1", "switch2"])
         details([/*"switch",*/ "switch1", "switch2", "temperature", "spacer2", "refresh", "spacer1", "lastcheckin", "spacer1" /*, "battery"*/])
     }
+    
     preferences 
     {
     	input name: "unwiredSwitch", type: "enum", options: ['None', 'Left', 'Right'], title: "Identify the unwired switch", 
@@ -389,17 +389,27 @@ def doButtonPush(sw)
 def leftButtonPush()
 {
 	 displayDebugLog("left button pushed " + showFlags())
-     doButtonPush('switch1')
-     state.lastPressType = "soft"
-	 runIn(1, clearLeftButtonStatus)
+     if ( state.unwired == 'Left' )
+     { 
+     	doButtonPush('switch1')
+     	state.lastPressType = "soft"
+	 	runIn(1, clearLeftButtonStatus)
+     }
+     else
+     	on1()
 }   
 
 def rightButtonPush()
 {
-	 displayDebugLog("right button pushed " + showFlags())
-     doButtonPush('switch2')
-     state.lastPressType = "soft"
-	 runIn(1, clearRightButtonStatus)
+	displayDebugLog("right button pushed " + showFlags())
+	if ( state.unwired == 'Right' )
+    { 
+     	doButtonPush('switch2')
+     	state.lastPressType = "soft"
+	 	runIn(1, clearRightButtonStatus)
+	}
+    else
+    	on2()
 }  
 
 private def clearFlags()
@@ -573,7 +583,7 @@ def on2()
 {
    	displayDebugLog( "on2()" )
 	if ( state.unwired == 'Right' )
-    {	leftButtonPush()
+    {	rightButtonPush()
         return []
     }
     sendEvent(name: "switch2", value: "on")
@@ -607,7 +617,7 @@ def off2()
 {
     displayDebugLog( "off2()" )
 	if ( state.unwired == 'Right' )
-    {	leftButtonPush()
+    {	rightButtonPush()
         return []
     }
     sendEvent(name: "switch2", value: "off")
