@@ -435,10 +435,10 @@ private def parseCatchAllMessage(String description)
                 displayDebugLog( "Map: " + dtMap )
                 if ( state.unwired == null )
                 	state.unwired = unwiredSwitch
-                if ( dtMap.get(110) == 0x0002 )
-                	state.unwired = 'Left'
-                if ( dtMap.get(111) == 0x0002)
-                	state.unwired = 'Right'
+                //if ( dtMap.get(110) == 0x0002 )
+                //	state.unwired = 'Left'
+                //if ( dtMap.get(111) == 0x0002)
+                //	state.unwired = 'Right'
                 if ( state.unwired != 'None' && !state.numButtons )
                 {
                 	state.numButtons = 2
