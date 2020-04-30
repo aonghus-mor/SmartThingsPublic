@@ -1,6 +1,8 @@
-This is a smartthings device handler for the Xiaomi Aqara 2 button wired wall switch with no neutral connection.  
+This is a smartthings device handler for the Xiaomi Aqara wired wall switch with no neutral connection. 
+This version should wiork with the single switch version, QBKG04LM, and the 2 switch vwersion, QBKG03LM.
 It is based on work by @simic and @wastedabuser. 
-Only one of the 2 switches is required to be connected to the live + switched wire.  The other may be used as a soft switch.
+In the 2 switch version, only one of the 2 switches is required to be connected to the live + switched wire.  
+The other may be used as a soft switch.
 The device will also give the temperature (in integer degrees).
 The device responds to simple presses of the switch and to press and hold.  
 It does not distinguish between double press and press & hold.
@@ -17,9 +19,8 @@ SmartThings does not cope well with devices with more than one 'endpoint', such 
 However, this DH works well in connection with @erocm1231's 'Virtual Device Sync' app, 
 which is designed to overcome this limitation.
 
-The DH is capable of detecting which switch, if any, is unwired.  
-However, I have decided to include a preference for initialising this to 'None', 'Left', or 'Right'.   
-The DH can correct this if it is chosen wrongly, but that is unlikely to be necessary.
+I have included a preference for initialising this to 'None', 'Left', or 'Right'.  
+The single switch version should leave this set to 'None'.   
 
 The latest version of the DH works with the new Samsung SmartThings App as well as with the Classic App.   
 However, the interface within the new App still needs some work.
