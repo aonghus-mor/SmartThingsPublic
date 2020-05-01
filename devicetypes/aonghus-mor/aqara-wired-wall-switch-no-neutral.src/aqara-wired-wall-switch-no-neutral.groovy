@@ -473,8 +473,8 @@ private def parseCatchAllMessage(String description)
 }
 
 private setTemp(int temp)
-{
-	def event = null
+{ 
+    def event = null
     if ( state.tempNow != temp || state.tempOffset != tempOffset )
     {
       	state.tempNow = temp
@@ -513,7 +513,7 @@ private def parseReportAttributeMessage(String description)
 				event = getBatteryResult(convertHexToInt(descMap.value / 2))
             break
  		case "0002": // temperature
-        	if ( descMap.attrId == "0000") 
+        	if ( descMap.attrId == '0000' ) 
             	event = setTemp( convertHexToInt(descMap.value) )
             break
  		case "0006":  //button press
@@ -567,7 +567,7 @@ private def parseCustomMessage(String description)
 
 def on() 
 {
-    def cmd = on()
+    def cmd = on1()
     cmd
 }
 
@@ -648,16 +648,17 @@ def refresh()
     if ( state.numButtons == 1 )
     	sendEvent(name: 'switch2', value: 'hidden', isStateChange: true)
     //def cmds = zigbee.configureReporting(0x0002, 0x0000, 0x29, 1800, 7200, 0x01)
-    def cmds = zigbee.readAttribute(0x0006,0,[destEndpoint: 0x01] ) + 
-    			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
-             	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] ) +
-        		zigbee.readAttribute(0x0006,0,[destEndpoint: 0x04] ) + 
-             	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x05] )
+    //def cmds = zigbee.readAttribute(0x0006,0,[destEndpoint: 0x01] ) + 
+    //			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
+    //         	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] ) +
+    //    		zigbee.readAttribute(0x0006,0,[destEndpoint: 0x04] ) + 
+    //         	zigbee.readAttribute(0x0006,0,[destEndpoint: 0x05] )
         
-    cmds += zigbee.readAttribute(0x0002, 0) + 
-           zigbee.readAttribute(0x0000, 0x0007)
+    def cmds = zigbee.readAttribute(0x0002, 0) + 
+           		zigbee.readAttribute(0x0000, 0x0007)
+           
     //if ( state.batteryPresent )
-    	cmds += zigbee.readAttribute(0x0001, 0) //+ zigbee.readAttribute(0x0001,0x0001) + zigbee.readAttribute(0x0001,0x0002)
+    //	cmds += zigbee.readAttribute(0x0001, 0) //+ zigbee.readAttribute(0x0001,0x0001) + zigbee.readAttribute(0x0001,0x0002)
                 
      //cmds += zigbee.configureReporting(0x0000, 0, 0x29, 1800,7200,0x01)
     
