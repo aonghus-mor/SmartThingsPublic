@@ -20,6 +20,7 @@
  *  12.10.2019 modified by @aonghus-mor to reorganise the main app screen to make each switch have equal weight.  Added button2 as a response to both switches being pressed simultaneously,
  *	01.01.2020 modified by @aonghus-mor to work with the new Smartthings App.  Although it works the interface in the new App needs some work.
  *  30.04.2020 modified by @aonghus-mor to add fuctionality for the single gang switch QBKG04LM.  Renamed to reflect this.   Minor changes to Temperature treatment.
+ *  12.05.2020 modified by @aonghus-mor to work with the new smartthings app.
 */
  
 import groovy.json.JsonOutput
@@ -34,9 +35,9 @@ metadata {
         capability "Configuration"
         capability "Refresh"
         capability "Switch"
-        capability "Temperature Measurement"
-        capability "Button"
         capability "Momentary"
+        capability "Button"
+        capability "Temperature Measurement"
         capability "Health Check"
         
         command "on2"
@@ -48,10 +49,14 @@ metadata {
         command "leftButtonPush"
         command "rightButtonPush"
         
-        attribute "switch1","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed"]
+        
+        attribute "switch","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed"]
+        //attribute "switch", "ENUM"
         attribute "switch2","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed", "hidden"]
         attribute "lastCheckin", "string"
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh"]
+        attribute "momentary", "ENUM", ["Pressed", "Standby"]
+        attribute "button", "ENUM", ["Pressed", "Held", "Standby"]
         
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", 
         		manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
@@ -104,7 +109,9 @@ metadata {
         }
         */
         
-        standardTile("switch1", "device.switch1", width: 3, height: 3, canChangeIcon: false) 
+       
+        
+        standardTile("switch", "device.switch", width: 3, height: 3, canChangeIcon: false) 
         {
 			state "off", label: '${name}', action: "on1", icon: "st.switches.light.off", backgroundColor: "#ffffff", nextState: "turningOn"
 			state "on", label: '${name}', action: "off1", icon: "st.switches.light.on", backgroundColor: "#79b821", nextState: "turningOff"
@@ -126,13 +133,24 @@ metadata {
             state "turningOff", label:'${name}', action:"on2", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off"
             state "held", label:'${name}', backgroundColor:"#ff0000",
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
-            state "released", label:'${name}', action: "rightButtonPush", backgroundColor:"#ffffff", nextState: "pushed",
+            state "released", label:'${name}', action: "on2", backgroundColor:"#ffffff", nextState: "pushed",
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonReleased.png"
             state "pushed", label:'${name}', backgroundColor:"#008800", 
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
            	state "hidden", label:'', backgroundColor: "#FFFFFF", icon:""
 		}
-	
+		/*
+        standardTile("button", "device.button", width: 3, height: 3, canChangeIcon: false) 
+        {
+			state "off", label: '${name}', action: "on1", icon: "st.switches.light.off", backgroundColor: "#ffffff", nextState: "turningOn"
+            state "held", label:'${name}', backgroundColor:"#ff0000",
+            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
+            //state "released", label:'${name}', action:"leftButtonPush", backgroundColor:"#ffffff", nextState: "pushed",
+            //		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonReleased.png"
+            state "pushed", label:'${name}', backgroundColor:"#008800", 
+            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"	
+		}
+       */
         valueTile("temperature", "device.temperature", width: 2, height: 2) 
         {
 			state("temperature", label:'${currentValue}°',
@@ -187,7 +205,7 @@ metadata {
         */	
         
         main (["switch1", "switch2"])
-        details([/*"switch",*/ "switch1", "switch2", "temperature", "spacer2", "refresh", "spacer1", "lastcheckin", "spacer1" /*, "battery"*/])
+        details(["switch", /* "switch1",*/ "switch2", "temperature", "spacer2", "refresh", "spacer1", "lastcheckin", "spacer1" /*, "battery"*/])
     }
     
     preferences 
@@ -273,7 +291,7 @@ private def parseFlags()
     	case "held":
         	if ( state.sw1 != null )
     		{
-            	events << createEvent(name: 'switch1', value: 'held' )
+            	events << createEvent(name: 'switch', value: 'held' )
             	if ( state.unwired == "Left" )
                 	events << createEvent(name: 'button', value: 'held', data:[buttonNumber: 1], isStateChange: true)
                 displayInfoLog('Left switch held.')
@@ -291,7 +309,7 @@ private def parseFlags()
          case "released":
          	if ( state.sw1 != null )
             {
-            	events << createEvent(name: 'switch1', value: 'released' )
+            	events << createEvent(name: 'switch', value: 'released' )
     		}
             else if ( state.sw2 != null )
             {
@@ -317,7 +335,7 @@ private def parseFlags()
                 }
                 else
     			{
-                	events << createEvent(name: 'switch1', value: state.sw1 )
+                	events << createEvent(name: 'switch', value: state.sw1 )
                 }
                 displayInfoLog('Left switch pushed.')
             }
@@ -364,14 +382,16 @@ def clearButtonStatus()
 def clearLeftButtonStatus()
 {
 	displayDebugLog( "Clearing Left Button Status" )
-	sendEvent(name: 'switch1', value: 'released', isStateChange: true)
+	sendEvent(name: 'switch', value: state.final, isStateChange: true)
+    //sendEvent(name: 'switch', value: 'off', isStateChange: true)
     clearFlags()
+    state.final = 'released'
 }
 
 def clearRightButtonStatus()
 {
     displayDebugLog( "Clearing Right Button Status" )
-    sendEvent(name: 'switch2', value: 'released', isStateChange: true)
+    sendEvent(name: 'switch2', value: ( state.unwired == 'Right' ? 'released' : 'off' ), isStateChange: true)
     clearFlags()
 }
 
@@ -395,7 +415,7 @@ def leftButtonPush()
 	 displayDebugLog("left button pushed " + showFlags())
      if ( state.unwired == 'Left' )
      { 
-     	doButtonPush('switch1')
+     	doButtonPush('switch')
      	state.lastPressType = "soft"
 	 	runIn(1, clearLeftButtonStatus)
      }
@@ -567,6 +587,8 @@ private def parseCustomMessage(String description)
 
 def on() 
 {
+    displayDebugLog("on()")
+    state.final = 'off'
     def cmd = on1()
     cmd
 }
@@ -576,10 +598,10 @@ def on1()
     displayDebugLog( "on1()" )
 	if ( state.unwired == 'Left' )
     {	
-    	leftButtonPush()
+        leftButtonPush()
         return []
     }
-    sendEvent(name: "switch1", value: "on")
+    sendEvent(name: "switch", value: "on")
 	def cmd = zigbee.command(0x0006, 0x01, "", [destEndpoint: 0x02] )
     displayDebugLog( cmd )
     cmd 
@@ -589,7 +611,8 @@ def on2()
 {
    	displayDebugLog( "on2()" )
 	if ( state.unwired == 'Right' )
-    {	rightButtonPush()
+    {	
+    	rightButtonPush()
         return []
     }
     sendEvent(name: "switch2", value: "on")
@@ -601,7 +624,9 @@ def on2()
 
 def off() 
 {
-	def cmd = off1()
+	displayDebugLog("off()")
+    state.final = 'off'
+    def cmd = off1()
     cmd
 }
 
@@ -613,7 +638,7 @@ def off1()
     	leftButtonPush()
         return []
     }
-    sendEvent(name: "switch1", value: "off")
+    sendEvent(name: "switch", value: "off")
     def cmd = zigbee.command(0x0006, 0x00, "", [destEndpoint: 0x02] )
     displayDebugLog( cmd )
     cmd
@@ -633,6 +658,19 @@ def off2()
     cmd
 }
 
+def push()
+{
+	displayDebugLog("Momentary pushed: ")
+	if ( state.unwired == 'Right' )
+    {	
+    	rightButtonPush()
+        return []
+    }
+    def cmd = zigbee.command(0x0006, 0x02, "", [destEndpoint: ( state.numSwitches == 1 ? 0x02 : 0x03 )] )
+    displayDebugLog( cmd )
+    cmd  
+}
+
 def refresh() 
 {
 	displayInfoLog( "refreshing" )
@@ -644,9 +682,12 @@ def refresh()
     state.tempNow = state.tempNow == null ? 0 : state.tempNow
     state.tempNow2 = state.tempNow2 == null ? 0 : state.tempNow2
     state.tempOffset = state.tempOffset == null ? 0 : state.tempOffset 
+    state.final = 'released'
     getNumButtons()
-    if ( state.numButtons == 1 )
+    if ( state.numSwitches == 1 )
     	sendEvent(name: 'switch2', value: 'hidden', isStateChange: true)
+    if ( state.unwired != "None" )
+    	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held'], isStateChange: true)
     //def cmds = zigbee.configureReporting(0x0002, 0x0000, 0x29, 1800, 7200, 0x01)
     //def cmds = zigbee.readAttribute(0x0006,0,[destEndpoint: 0x01] ) + 
     //			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) + 
@@ -674,9 +715,11 @@ private getNumButtons()
     switch ( model ) 
     {
     	case "lumi.ctrl_neutral1":
-     		state.numButtons = 1  
+        	state.numSwitches = 1
+     		state.numButtons = 0  
             break
         case "lumi.ctrl_neutral2":
+        	state.numSwitches = 2
         	state.numButtons = 2
             break
         default:
