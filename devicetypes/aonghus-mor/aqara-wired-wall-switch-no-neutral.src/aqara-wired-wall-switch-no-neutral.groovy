@@ -57,13 +57,15 @@ metadata {
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh"]
         attribute "momentary", "ENUM", ["Pressed", "Standby"]
         attribute "button", "ENUM", ["Pressed", "Held", "Standby"]
+        //attribute "tempOffset", "number"
         
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", 
         		manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.ctrl_neutral1", deviceJoinName: "Aqara Switch QBKG04LM"
     }
-
+	
+    
     // simulator metadata
     /*
     simulator {
@@ -204,19 +206,21 @@ metadata {
 		}
         */	
         
-        main (["switch1", "switch2"])
+        main (["switch", "switch2"])
         details(["switch", /* "switch1",*/ "switch2", "temperature", "spacer2", "refresh", "spacer1", "lastcheckin", "spacer1" /*, "battery"*/])
     }
-    
+ 
     preferences 
     {
     	input name: "unwiredSwitch", type: "enum", options: ['None', 'Left', 'Right'], title: "Identify the unwired switch", 
         							defaultValue: 'None', displayDuringSetup: true
-        input name: "tempOffset", type: "decimal", title:"Temperature Offset", description:"Adjust temperature by this many degrees", range:"*..*", defaultValue: 0                          
+        input name: "tempOffset", type: "decimal", title:"Temperature Offset", 
+        							description:"Adjust temperature by this many degrees", range:"*..*", defaultValue: 0                          
         input name: "infoLogging", type: "bool", title: "Display info log messages?", defaultValue: true
 		input name: "debugLogging", type: "bool", title: "Display debug log messages?"
     }
 }
+
 
 // Parse incoming device messages to generate events
 def parse(String description)
@@ -495,13 +499,15 @@ private def parseCatchAllMessage(String description)
 private setTemp(int temp)
 { 
     def event = null
+    //tempOffset = tempOffset == null ? 0 : tempOffset
     if ( state.tempNow != temp || state.tempOffset != tempOffset )
     {
       	state.tempNow = temp
         state.tempOffset = tempOffset
         if ( getTemperatureScale() != "C" ) 
             temp = celsiusToFahrenheit(temp)
-        state.tempNow2 = temp + tempOffset      
+        log.debug "${temp} - ${tempOffset}"
+        state.tempNow2 = temp + ( state.tempOffset == null ? 0 : tempOffset )      
         event = createEvent(name: "temperature", value: state.tempNow2, unit: getTemperatureScale())
         displayDebugLog("Temperature is now ${state.tempNow2}°")          	
 	}
@@ -707,6 +713,21 @@ def refresh()
      //updated()
      
      cmds
+}
+
+def installed()
+{
+	refresh()
+}
+
+def configure()
+{
+	refresh()
+}
+
+def updated()
+{
+	refresh()
 }
 
 private getNumButtons()
