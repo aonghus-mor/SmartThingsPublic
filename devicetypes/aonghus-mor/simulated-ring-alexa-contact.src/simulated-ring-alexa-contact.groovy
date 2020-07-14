@@ -41,7 +41,7 @@ metadata {
             state "off", label: '${currentValue}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
             state "on", label: '${currentValue}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00A0DC"
         }
-        main "switch"
+        main "contact"
         details(["contact","switch"])
     }
 }
@@ -52,9 +52,11 @@ def parse(description) {
 def on() {
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "contact", value: "open")
+    log.info "contact opened"
 }
 
 def off() {
     sendEvent(name: "switch", value: "off")
     sendEvent(name: "contact", value: "closed")
+    log.info "contact closed"
 }
