@@ -33,7 +33,7 @@ metadata {
             tileAttribute("device.motion", key: "PRIMARY_CONTROL") 
             {
                 attributeState "active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#e86d13"
-                attributeState "closed", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#00a0dc"
+                attributeState "inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#00a0dc"
             }
         }
         standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) 
@@ -41,20 +41,24 @@ metadata {
             state "off", label: '${currentValue}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
             state "on", label: '${currentValue}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00A0DC"
         }
-        main "switch"
+        main "motion"
         details(["motion","switch"])
     }
 }
 
-def parse(description) {
-}
+def parse(description) 
+{}
 
-def on() {
+def on() 
+{
     sendEvent(name: "switch", value: "on")
     sendEvent(name: "motion", value: "active")
+    log.info "motion detected"
 }
 
-def off() {
+def off() 
+{
     sendEvent(name: "switch", value: "off")
     sendEvent(name: "motion", value: "inactive")
+    log.info "motion ceased"
 }
