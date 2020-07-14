@@ -32,8 +32,8 @@ metadata {
         {
             tileAttribute("device.contact", key: "PRIMARY_CONTROL") 
             {
-                attributeState "open", label:'${name}', icon:"st.contact.contact.open", backgroundColor:"#e86d13"
-                attributeState "closed", label:'${name}', icon:"st.contact.contact.closed", backgroundColor:"#00a0dc"
+                attributeState "open", label:'${name}', icon:"st.contact.contact.open", backgroundColor:"#00A0DC"
+                attributeState "closed", label:'${name}', icon:"st.contact.contact.closed", backgroundColor:"#cccccc"
             }
         }
         standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) 
