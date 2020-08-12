@@ -1,5 +1,5 @@
 This is a smartthings device handler for the Xiaomi Aqara wired wall switch with no neutral connection. 
-This version should wiork with the single switch version, QBKG04LM, and the 2 switch vwersion, QBKG03LM.
+This version should work with the single switch versions, QBKG04LM and QBKG21LM, and the 2 switch vwersiona, QBKG03LM and GBKG22LM.
 It is based on work by @simic and @wastedabuser. 
 In the 2 switch version, only one of the 2 switches is required to be connected to the live + switched wire.  
 The other may be used as a soft switch.
