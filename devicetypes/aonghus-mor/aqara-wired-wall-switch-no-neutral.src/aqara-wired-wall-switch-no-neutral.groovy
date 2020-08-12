@@ -21,6 +21,7 @@
  *	01.01.2020 modified by @aonghus-mor to work with the new Smartthings App.  Although it works the interface in the new App needs some work.
  *  30.04.2020 modified by @aonghus-mor to add fuctionality for the single gang switch QBKG04LM.  Renamed to reflect this.   Minor changes to Temperature treatment.
  *  12.05.2020 modified by @aonghus-mor to work with the new smartthings app.
+ *  12.08.2020 modified by @aonghus-mor to recognise QBKG21LM & QBKG22LM (but not yet QBKG25LM).
 */
  
 import groovy.json.JsonOutput
@@ -63,6 +64,12 @@ metadata {
         		manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.ctrl_neutral1", deviceJoinName: "Aqara Switch QBKG04LM"
+    	fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b2lacn02", deviceJoinName: "Aqara Switch QBKG22LM"
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b1lacn02", deviceJoinName: "Aqara Switch QBKG21LM"
+        //fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+        //        manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM"       
     }
 	
     
@@ -736,12 +743,17 @@ private getNumButtons()
     switch ( model ) 
     {
     	case "lumi.ctrl_neutral1":
+        case "lumi.switch.b1lacn02":
         	state.numSwitches = 1
      		state.numButtons = 0  
             break
         case "lumi.ctrl_neutral2":
+        case "lumi.switch.b2lacn02":
         	state.numSwitches = 2
         	state.numButtons = 2
+            break
+        case "lumi.switch.l3acn3":
+        	displayInfoLog("3-Button switch not yet implemented.")
             break
         default:
         	displayDebugLog("Unknown device model: " + model)
