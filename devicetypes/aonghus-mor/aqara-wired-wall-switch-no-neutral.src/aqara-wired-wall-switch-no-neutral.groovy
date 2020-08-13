@@ -41,6 +41,8 @@ metadata {
         capability "Temperature Measurement"
         capability "Health Check"
         
+        command "on3"
+        command "off3"
         command "on2"
         command "off2"
         command "on1"
@@ -54,6 +56,7 @@ metadata {
         attribute "switch","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed"]
         //attribute "switch", "ENUM"
         attribute "switch2","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed", "hidden"]
+        attribute "switch3","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed", "hidden"]
         attribute "lastCheckin", "string"
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh"]
         attribute "momentary", "ENUM", ["Pressed", "Standby"]
@@ -68,8 +71,8 @@ metadata {
                 manufacturer: "LUMI", model: "lumi.switch.b2lacn02", deviceJoinName: "Aqara Switch QBKG22LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.b1lacn02", deviceJoinName: "Aqara Switch QBKG21LM"
-        //fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
-        //        manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM"       
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM"       
     }
 	
     
@@ -148,6 +151,21 @@ metadata {
             		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
            	state "hidden", label:'', backgroundColor: "#FFFFFF", icon:""
 		}
+        
+        standardTile("switch3", "device.switch3", width: 3, height: 3, canChangeIcon: false) 
+        {
+			state "off", label: '${name}', action: "on3", icon: "st.switches.light.off", backgroundColor: "#ffffff", nextState: "turningOn"
+			state "on", label: '${name}', action: "off3", icon: "st.switches.light.on", backgroundColor: "#79b821", nextState: "turningOff"
+            state "turningOn", label:'${name}', action:"off3", icon:"st.switches.light.on", backgroundColor:"#00a0dc", nextState:"on"
+            state "turningOff", label:'${name}', action:"on3", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"off"
+            state "held", label:'${name}', backgroundColor:"#ff0000",
+            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
+            state "released", label:'${name}', action: "on3", backgroundColor:"#ffffff", nextState: "pushed",
+            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonReleased.png"
+            state "pushed", label:'${name}', backgroundColor:"#008800", 
+            		icon:"https://raw.githubusercontent.com/bspranger/Xiaomi/master/images/ButtonPushed.png"
+           	state "hidden", label:'', backgroundColor: "#FFFFFF", icon:""
+		}
 		/*
         standardTile("button", "device.button", width: 3, height: 3, canChangeIcon: false) 
         {
@@ -213,8 +231,8 @@ metadata {
 		}
         */	
         
-        main (["switch", "switch2"])
-        details(["switch", /* "switch1",*/ "switch2", "temperature", "spacer2", "refresh", "spacer1", "lastcheckin", "spacer1" /*, "battery"*/])
+        main (["switch", "switch2", "switch3"])
+        details(["switch", /* "switch1",*/ "switch2", "switch3", "temperature", "spacer2", "refresh", "spacer1", "lastcheckin", "spacer1" /*, "battery"*/])
     }
  
     preferences 
@@ -242,7 +260,7 @@ def parse(String description)
     displayDebugLog(newcheck + " " + state.lastCheckTime + " " + diffcheck)
     if ( diffcheck > 2000 ) // if the state has not been resolved after 2 seconds, clear the flags
     {
-    	if ( state.flag == null && ( state.sw1 != null || state.sw2 != null ) )
+    	if ( state.flag == null && ( state.sw1 != null || state.sw2 != null || state.sw3 != null ) )
         	state.flag = 'soft'
         else
         	clearFlags()
@@ -273,7 +291,7 @@ def parse(String description)
 
 private def showFlags()
 {
-	return state.flag + " " + state.sw1 + " " + state.sw2 + " " + state.lastCheckTime
+	return state.flag + " " + state.sw1 + " " + state.sw2 + " " + state.sw3 + " " + state.lastCheckTime
 }
 
 def updateTemp()
@@ -314,6 +332,13 @@ private def parseFlags()
                 	events << createEvent(name: 'button', value: 'held', data:[buttonNumber: 1], isStateChange: true)
                 displayInfoLog('Right switch held.')
             }
+            else if ( state.sw3 != null )
+            {
+            	events << createEvent(name: 'switch3', value: 'held' )
+                //if ( state.unwired == "Right" )
+                //	events << createEvent(name: 'button', value: 'held', data:[buttonNumber: 1], isStateChange: true)
+                displayInfoLog('Right switch held.')
+            }
            	lastPress = "held"
             makeEvent = false
             break
@@ -325,6 +350,10 @@ private def parseFlags()
             else if ( state.sw2 != null )
             {
                 events << createEvent(name: 'switch2', value: 'released' )
+    		}
+            else if ( state.sw3 != null )
+            {
+                events << createEvent(name: 'switch3', value: 'released' )
     		}
             lastPress = "released"
             clearFlags()
@@ -363,6 +392,20 @@ private def parseFlags()
                 	events << createEvent(name: 'switch2', value: state.sw2 )
                 }	
                 displayInfoLog('Right switch pushed.')
+            }
+            else if ( state.sw3 != null )
+            {
+            	//if ( state.unwired == 'Right' )
+    			//{
+                //	displayDebugLog( "sending button pushed event from switch 2" )
+                //    doButtonPush('switch2')
+                //    runIn(1, clearRightButtonStatus)
+                //} 
+                //else
+                //{
+                	events << createEvent(name: 'switch3', value: state.sw2 )
+                //}	
+                displayInfoLog('Third switch pushed.')
             }
             else
             	makeEvent = false
@@ -452,6 +495,7 @@ private def clearFlags()
 	state.flag = null
     state.sw1 = null
     state.sw2 = null
+    state.sw3 = null
     displayDebugLog("Flags cleared.")
 }
 
@@ -482,6 +526,11 @@ private def parseCatchAllMessage(String description)
                 	displayInfoLog( "Unwired Switch is ${state.unwired}" )
                 	displayInfoLog( "Switches are (" + (dtMap.get(100) ? "on" : "off") + "," + (dtMap.get(101) ? "on" : "off") +")" )
                 }
+                if ( state.numButtons == 3 )
+                {
+                	//displayInfoLog( "Unwired Switch is ${state.unwired}" )
+                	displayInfoLog( "Switches are (" + (dtMap.get(100) ? "on" : "off") + "," + (dtMap.get(101) ? "on" : "off") + "," + (dtMap.get(102) ? "on" : "off")+")" )
+                }
                 else
                 	displayInfoLog( "Switch is " + (dtMap.get(100) ? "on" : "off") )
             }
@@ -490,11 +539,14 @@ private def parseCatchAllMessage(String description)
         	def onoff = cluster.data[0] == 0x01 ? "on" : "off"
         	switch ( cluster.sourceEndpoint) 
             {
-        		case 0x02:
+        		case 0x01:
+                case 0x02:
                 case 0x03:
                 case 0x04:
                 case 0x05:
-                	state.flag = "soft"
+				case 0x07:
+                case 0x08:
+				state.flag = "soft"
                     break
                 default:
                 	displayDebugLog( "Unknown SourceEndpoint: $cluster.sourceEndpoint" )
@@ -568,7 +620,10 @@ def parseSwitchOnOff(Map descMap)
 	def onoff = descMap.value[-1] == "1" ? "on" : "off"
 	switch ( descMap.endpoint )
     {
-    	case "02":
+    	case "01":
+            state.sw3 = onoff
+            break
+        case "02":
             state.sw1 = onoff
             break
         case "03":
@@ -576,11 +631,13 @@ def parseSwitchOnOff(Map descMap)
         	break
         case "04": // button 1 pressed
         case "05": // button 2 pressed
+        case "07":
+        case "08":
         	state.flag = "hard"
             break
         case "06": // both buttons pressed
         	state.flag = "both"
-		break
+			break
         default:
         	displayDebugLog( "ClusterID 0x0006 with unknown endpoint $descMap.endpoint" )
      }
@@ -635,6 +692,21 @@ def on2()
     cmd
 }
 
+def on3() 
+{
+   	displayDebugLog( "on3()" )
+	//if ( state.unwired == 'Right' )
+    //{	
+    //	rightButtonPush()
+    //    return []
+    //}
+    sendEvent(name: "switch3", value: "on")
+	//"st cmd 0x${device.deviceNetworkId} 3 6 1 {}"
+    def cmd = zigbee.command(0x0006, 0x01, "",[destEndpoint: 0x01] )
+    displayDebugLog( cmd )
+    cmd
+}
+
 def off() 
 {
 	displayDebugLog("off()")
@@ -671,6 +743,20 @@ def off2()
     cmd
 }
 
+def off3() 
+{
+    displayDebugLog( "off3()" )
+	//if ( state.unwired == 'Right' )
+    //{	rightButtonPush()
+    //    return []
+    //}
+    sendEvent(name: "switch3", value: "off")
+	//"st cmd 0x${device.deviceNetworkId} 3 6 0 {}"
+    def cmd = zigbee.command(0x0006, 0x00, "", [destEndpoint: 0x01] )
+    displayDebugLog( cmd )
+    cmd
+}
+
 def push()
 {
 	displayDebugLog("Momentary pushed: ")
@@ -697,8 +783,12 @@ def refresh()
     state.tempOffset = state.tempOffset == null ? 0 : state.tempOffset 
     state.final = 'released'
     getNumButtons()
-    if ( state.numSwitches == 1 )
-    	sendEvent(name: 'switch2', value: 'hidden', isStateChange: true)
+    if (state.numSwitches < 3 )
+    {
+    	sendEvent(name: 'switch3', value: 'hidden', isStateChange: true)
+    	if ( state.numSwitches < 2 )
+    		sendEvent(name: 'switch2', value: 'hidden', isStateChange: true)
+    }
     if ( state.unwired != "None" )
     	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held'], isStateChange: true)
     //def cmds = zigbee.configureReporting(0x0002, 0x0000, 0x29, 1800, 7200, 0x01)
@@ -753,7 +843,9 @@ private getNumButtons()
         	state.numButtons = 2
             break
         case "lumi.switch.l3acn3":
-        	displayInfoLog("3-Button switch not yet implemented.")
+        	//displayInfoLog("3-Button switch not yet implemented.")
+            state.numSwitches = 3
+            state.numButtons = 3
             break
         default:
         	displayDebugLog("Unknown device model: " + model)
