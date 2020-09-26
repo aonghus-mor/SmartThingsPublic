@@ -4,8 +4,8 @@
 metadata 
 {
 	definition (name: "srt323-thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
-                mnmn: "SmartThings", vid: "generic-thermostat", ocfDeviceType: "oic.d.thermostat", 
-                minHubCoreVersion: '000.017.0012', executeCommandsLocally: false) 
+                mnmn: "SmartThings", vid: "generic-radiator-thermostat-2", ocfDeviceType: "oic.d.thermostat") 
+                //minHubCoreVersion: '000.017.0012', executeCommandsLocally: false) 
     {
     	capability "Actuator"
 		capability "Temperature Measurement"
@@ -507,7 +507,7 @@ def setTemperature(temp)
 def setHeatingSetpoint(degrees) 
 {
     // special codes, 100-103, are converted as below
-    int degs = Math.max(degrees.toInteger(), T103) // Don't let the setpoint go below the frost protection temperature
+    int degs = Math.max(degrees.toInteger(), state.Tfrost) // Don't let the setpoint go below the frost protection temperature
     if ( degs > 99 ) 
     {
     	switch ( degs )
@@ -516,13 +516,13 @@ def setHeatingSetpoint(degrees)
             	degs = state.previousSetpoint  // resets to the previous temperature setpoint 
                 break
             case 101: 
-            	degs = T101  // sets to the temperature corresponding to code 101 in the preferences section of the DH
+            	degs = state.Thigh  // sets to the temperature corresponding to code 101 in the preferences section of the DH
                 break
             case 102:
-            	degs = T102  // ditto
+            	degs = state.Tlow  // ditto
                 break
             case 103:
-            	degs = T103 // ditto
+            	degs = state.Tfrost // ditto
                 break
             default:
             	log.debug "Invalid setpoint: $degrees" // invalid special code. setpoint abandoned 
@@ -536,20 +536,6 @@ def setHeatingSetpoint(degrees)
 	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
     //def locationScale = getTemperatureScale()
     def p = (state.precision == null) ? 1 : state.precision
-
-    //def convertedDegrees
-    //if (locationScale == "C" && deviceScaleString == "F") 
-    //{
-    //    convertedDegrees = celsiusToFahrenheit(degrees)
-    //} 
-    //else if (locationScale == "F" && deviceScaleString == "C") 
-    //{
-    //    convertedDegrees = fahrenheitToCelsius(degrees)
-    //} 
-    //else 
-    //{
-    //    convertedDegrees = degrees
-    //}
 
 	//log.trace "setHeatingSetpoint scale: ${state.scale} precision: $p setpoint: ${degrees}"
 	//state.deviceScale = deviceScale
@@ -629,6 +615,10 @@ private sendConfig(cmds)
     cmds << zwave.associationV1.associationSet(groupingIdentifier:5, nodeId:[zwaveHubNodeId]).format()
 
     // set the configuration parameters
+    // log.debug userWakeUpInterval + " " + deltaT + " " + T101 + " " + T102 + " " + T103
+    state.Thigh  = T101 ? T101 : 21
+    state.Tlow   = T102 ? T102 : 15
+    state.Tfrost = T103 ? T103 : 05
     // set the temperature sensor On
     cmds << zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format()
     // set the temperature scale, "C" or "F"
