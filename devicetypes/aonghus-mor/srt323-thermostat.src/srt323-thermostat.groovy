@@ -189,7 +189,8 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 {
 	//log.debug "SetPointReport: $cmd"
     def map = [:]
-	map.value = cmd.scaledValue.toInteger().toString()
+	//map.value = cmd.scaledValue.toInteger().toString()
+    map.value = cmd.scaledValue.toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.displayed = false
 	switch (cmd.setpointType) {
@@ -200,6 +201,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 			return [:]
 	}
     log.debug "SetPointReport: ${map.value} ${map.unit}"
+    //log.debug cmd
 	// So we can respond with same format
 	state.size = cmd.size
 	state.scale = cmd.scale
@@ -343,6 +345,11 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSuppo
     }
 }
 
+//def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSupportedReport cmd)
+//{
+//	log.debug cnd
+//}
+
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalCapabilitiesReport cmd) 
 {
     def map = [ name: "defaultWakeUpInterval", unit: "seconds" ]
@@ -379,7 +386,7 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv1.ManufacturerS
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd)
 {
-   log.debug "${cmd}"
+   //log.debug "${cmd}"
    switch (cmd.parameterNumber )
    {
       case 0x01:
@@ -486,14 +493,14 @@ def quickSetHeat(degrees)
 
 def setTempUp() 
 { 
-    def newtemp = device.currentValue("heatingSetpoint") + 1.1
+    def newtemp = device.currentValue("heatingSetpoint").toInteger() + 1
     log.debug "Setting temp up: $newtemp"
     quickSetHeat(newtemp)
 }
 
 def setTempDown() 
 { 
-    def newtemp = device.currentValue("heatingSetpoint") - 0.9
+    def newtemp = device.currentValue("heatingSetpoint").toInteger() - 1
     log.debug "Setting temp down: $newtemp"
     quickSetHeat(newtemp)
 }
@@ -507,7 +514,9 @@ def setTemperature(temp)
 def setHeatingSetpoint(degrees) 
 {
     // special codes, 100-103, are converted as below
-    int degs = Math.max(degrees.toInteger(), state.Tfrost) // Don't let the setpoint go below the frost protection temperature
+    
+    // Don't let the setpoint go below the frost protection temperature
+    degrees = degrees < state.Tfrost ? Tfrost : degrees
     if ( degs > 99 ) 
     {
     	switch ( degs )
@@ -529,22 +538,17 @@ def setHeatingSetpoint(degrees)
                 return
         }
     }
-    if ( degrees > device.currentValue("heatingSetpoint") )
-    	degs +=1 
-    log.trace "setHeatingSetpoint($degrees) set to $degs"
-    sendEvent(name: 'heatingSetpoint', value: degs)
+   
+    sendEvent(name: 'heatingSetpoint', value: degrees)
 
 	//def deviceScale = state.scale ?: 1
 	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
     //def locationScale = getTemperatureScale()
     def p = (state.precision == null) ? 1 : state.precision
-
-	log.trace "setHeatingSetpoint scale: ${state.scale} precision: $p setpoint: ${degrees}"
-	//state.deviceScale = deviceScale
-    state.p = p
-    //state.p = 0
+	state.p = p
+	log.trace "setHeatingSetpoint scale: ${state.scale} precision: $p setpoint: ${degrees}"    
     state.previousSetpoint = state.setpoint
-    state.setpoint = degs
+    state.setpoint = degrees 
     state.updateNeeded = true
     // thermostatMode
 }
