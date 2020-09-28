@@ -192,7 +192,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 	//map.value = cmd.scaledValue.toInteger().toString()
     map.value = cmd.scaledValue.toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
-	map.displayed = false
+	map.displayed = true
 	switch (cmd.setpointType) {
 		case 1:
 			map.name = "heatingSetpoint"
@@ -324,6 +324,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.Thermosta
 	}
 	map.name = "thermostatOperatingState"
     map.descriptionText = "Operating state: ${map.value}"
+    map.isStateChange = true
     log.debug "Operating State: ${map.value}"
 	createEvent(map)
 }
@@ -517,21 +518,22 @@ def setHeatingSetpoint(degrees)
     
     // Don't let the setpoint go below the frost protection temperature
     degrees = degrees < state.Tfrost ? Tfrost : degrees
-    if ( degs > 99 ) 
+    if ( degrees > 99 ) 
     {
-    	switch ( degs )
+    	int degs = degrees.toInteger()
+        switch ( degs )
         {
         	case 100: 
-            	degs = state.previousSetpoint  // resets to the previous temperature setpoint 
+            	degrees = state.previousSetpoint  // resets to the previous temperature setpoint 
                 break
             case 101: 
-            	degs = state.Thigh  // sets to the temperature corresponding to code 101 in the preferences section of the DH
+            	degrees = state.Thigh  // sets to the temperature corresponding to code 101 in the preferences section of the DH
                 break
             case 102:
-            	degs = state.Tlow  // ditto
+            	degrees = state.Tlow  // ditto
                 break
             case 103:
-            	degs = state.Tfrost // ditto
+            	degrees = state.Tfrost // ditto
                 break
             default:
             	log.debug "Invalid setpoint: $degrees" // invalid special code. setpoint abandoned 
@@ -539,7 +541,7 @@ def setHeatingSetpoint(degrees)
         }
     }
    
-    sendEvent(name: 'heatingSetpoint', value: degrees)
+    sendEvent(name: 'heatingSetpoint', value: degrees, displayed: true, isStateChange: true)
 
 	//def deviceScale = state.scale ?: 1
 	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
