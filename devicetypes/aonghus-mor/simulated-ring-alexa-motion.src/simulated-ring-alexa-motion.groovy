@@ -19,7 +19,8 @@ metadata
         capability "Switch"
         capability "Sensor"
         capability "Actuator"
-        capability "Motion Sensor"	    		
+        capability "Motion Sensor"	
+        capability "Health Check"
     }
 }
 
@@ -38,4 +39,10 @@ def off()
     sendEvent(name: "switch", value: "off", displayed: false)
     sendEvent(name: "motion", value: "inactive")
     log.info "motion ceased"
+}
+
+def ping()
+{
+	def stt = device.currentValue('motion')
+	sendEvent(name: 'switch', value: stt)
 }
