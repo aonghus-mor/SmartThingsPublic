@@ -9,7 +9,7 @@ The device responds to simple presses of the switch, to double presses and to pr
 
 This version generates a child switch to represent the second switch.  Virtual Device Sync is no longer required.
 
-When a switch is unwired the DH in the app will normally show 'Off', but will turn to 'On' for a short time bafter it is pressed before returning to 'Off'.
+When a switch is unwired the DH in the app will normally show 'Off', but will turn to 'On' for a short time after it is pressed before returning to 'Off'.
 i.e. it behaves as a button.
 
 Each switch action will generate a virtual button action as well as the hardware action, switching the wired switch off or on.
