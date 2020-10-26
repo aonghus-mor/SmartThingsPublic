@@ -385,10 +385,11 @@ private def parseCatchAllMessage(String description)
                     	
                         try
                         {
-                        	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
-                        	if ( getChildDevices()[0].device.currentValue('switch') != onoff2 )
+                        	//Try to stop child device(s) from going offline
+                            def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
+                        	//if ( getChildDevices()[0].device.currentValue('switch') != onoff2 )
                             	getChildDevices()[0].sendEvent(name: 'switch', value: onoff2 )
-                            displayDebugLog("DH synced with hardware - ${getChildDevices()[0].device.currentValue('switch')} - ${onoff2}")
+                            displayDebugLog("Child DH synced with hardware - ${getChildDevices()[0].device.currentValue('switch')} - ${onoff2}")
                         }
                 		catch(Exception e) 
         				{
@@ -597,7 +598,7 @@ def refresh()
     	//try { deleteChildDevice("${device.deviceNetworkId}-2")
     	//} catch(Exception e) { displayDebugLog("${e}") }
     	def childDevices = getChildDevices()
-		displayDebugLog("${childDevices}: ${childDevices.size()}")
+		displayDebugLog("Children: ${childDevices}: ${childDevices.size()}")
    
 		if (childDevices.size() == 0) 
     	{
@@ -618,6 +619,7 @@ def refresh()
 			displayInfoLog("Child created")
 		}    
         //sendEvent(name: "switch2", value: getChildDevices()[0])
+        getChildDevices()[0].sendEvent(name: 'checkInterval', value: '3000')
     }                    
     if ( state.unwired != "None" )
     	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held', 'double'], isStateChange: true)
@@ -633,7 +635,7 @@ def refresh()
     
      displayDebugLog( cmds )
      //updated()
-     
+     state.flag = null
      cmds
 }
 
