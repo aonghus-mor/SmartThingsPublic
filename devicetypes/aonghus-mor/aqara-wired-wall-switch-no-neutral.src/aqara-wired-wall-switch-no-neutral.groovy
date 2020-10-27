@@ -18,6 +18,7 @@
  *  20.06.2019 - 12.08.2020 modified by @aonghus-mor 
  *  12.08.2020 modified by @aonghus-mor to recognise QBKG21LM & QBKG22LM (but not yet QBKG25LM).
  *  13.10.2020 New version by @aonghus-mor for new smartthigs app.
+ *  27.10.2020 Adapted for the new 3 button switch QBKG25LM ( Thanks to @Chiu for his help).
 */
  
 import groovy.json.JsonOutput
@@ -72,8 +73,8 @@ metadata
     }
 	
     preferences 
-    {
-    	input name: "unwiredSwitch", type: "enum", options: ['None', 'First', 'Second'], title: "Identify the unwired switch", 
+    {	
+       	input name: "unwiredSwitch", type: "enum", options: ['None', 'First', 'Second', 'Third', 'First_and_Second', 'First_and_Third', 'Second_and_Third'], title: "Identify the unwired switch", 
         							defaultValue: 'None', displayDuringSetup: true
         input name: "tempOffset", type: "decimal", title:"Temperature Offset", 
         							description:"Adjust temperature by this many degrees", range:"*..*", defaultValue: 0                          
@@ -152,7 +153,9 @@ private def parseFlags()
     def lastPress
     def makeEvent = true
     displayDebugLog( "parsing flags: " + showFlags() )
-   
+    if ( state.unwired instanceof String || state.unwired == null )
+    	state.unwired = parseUnwiredSwitch()
+    
     switch( state.flag )
     {
     	case "held":
@@ -183,11 +186,11 @@ private def parseFlags()
             //clearFlags()
             break
          case "released":
-         	if ( state.unwired != 'None' )
+         	if ( state.unwired != 0x00 )
             {
             	if ( state.sw1 != null )
             	{
-                	if ( state.unwired == 'First' )
+                	if ( (state.unwired & 0x01) != 0x00 )
                 	{
                 		events << createEvent(name: 'switch', value: 'off' )
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp1] ))
@@ -195,7 +198,7 @@ private def parseFlags()
     			}
             	else if ( state.sw2 != null )
             	{
-                	if ( state.unwired == 'Second' )
+                	if ( (state.unwired & 0x02) != 0x00 )
                 	{
                 		getChildDevices()[0].sendEvent(name: 'switch', value: 'off' )
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
@@ -203,7 +206,7 @@ private def parseFlags()
         		}
             	else if ( state.sw3 != null )
             	{
-                	if ( state.unwired == 'Third' )
+                	if ( (state.unwired & 0x04) != 0x00 )
              		{
                 		getChildDevices()[1].sendEvent(name: 'switch', value: 'off' )
                 		events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp3] ))
@@ -227,7 +230,7 @@ private def parseFlags()
             	else if (state.sw1 == 'on' )
             	{
             		events 	<< createEvent(name: 'switch', value: 'on', isStateChange: true)
-                	if ( state.unwired == 'First' )
+                	if ( (state.unwired & 0x01) != 0x00 )
                 	{
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp1] ))
                         state.flag = 'soft'
@@ -240,7 +243,7 @@ private def parseFlags()
             	else if (state.sw2 == 'on' )
             	{
             		getChildDevices()[0].sendEvent(name: 'switch', value: 'on', isStateChange: true)
-                	if ( state.unwired == 'Second' )
+                	if ( (state.unwired & 0x02) != 0x00 )
                 	{
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
                         state.flag = 'soft'
@@ -259,7 +262,7 @@ private def parseFlags()
             	if ( state.sw1 == 'off' )
             	{
                 	events << createEvent(name: 'switch', value: 'off')
-                    if ( state.unwired != 'First' )
+                    if ( (state.unwired & 0x01) == 0x00 )
                     	events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 2 : 1], isStateChange: true)
                     state.flag = null
                 }
@@ -268,7 +271,8 @@ private def parseFlags()
                     events 	<< createEvent(name: 'switch', value: 'on', isStateChange: true)
                     events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 2 : 1], isStateChange: true)
                     state.flag = null
-                	if ( state.unwired == 'First' )
+                    displayDebugLog("Unwired type: ${state.unwired} ${state.unwired & 0x01}")
+                	if ( (state.unwired & 0x01) != 0x00 )
                     {
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp1] ))
                     	state.flag = 'soft'
@@ -281,7 +285,7 @@ private def parseFlags()
                 if ( state.sw2 == 'off' )
             	{
                 	getChildDevices()[0].sendEvent(name: 'switch', value: 'off' )
-                    if ( state.unwired != 'Second' )
+                    if ( (state.unwired & 0x02) == 0x00 )
                     	events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 4 : 3], isStateChange: true)
                     state.flag = null
                 }
@@ -290,7 +294,7 @@ private def parseFlags()
                     getChildDevices()[0].sendEvent(name: 'switch', value: 'on', isStateChange: true)
                     events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 4 : 3], isStateChange: true)
                     state.flag = null
-                	if ( state.unwired == 'Second' )
+                	if ( (state.unwired & 0x02) != 0x00 )
                     {
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
                         state.flag = 'soft'
@@ -303,7 +307,7 @@ private def parseFlags()
             	if ( state.sw3 == 'off' )
             	{
                 	getChildDevices()[1].sendEvent(name: 'switch', value: 'off' )
-                    if ( state.unwired != 'Third' )
+                    if ( (state.unwired & 0x04) == 0x00 )
                     	events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 6 : 5], isStateChange: true)
                 	state.flag = null
                 }
@@ -312,7 +316,7 @@ private def parseFlags()
             		getChildDevices()[1].sendEvent(name: 'switch', value: 'on', isStateChange: true)
                     events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 6 : 5], isStateChange: true)
                     state.flag = null
-                	if ( state.unwired == 'Third' )
+                	if ( (state.unwired & 0x04) != 0x00 )
                     {
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp3] ))
                         state.flag = 'soft'
@@ -337,8 +341,6 @@ private def parseFlags()
   	events
 }
 
-
-
 private def clearFlags()
 {
 	//state.flag = null
@@ -361,13 +363,13 @@ private def parseCatchAllMessage(String description)
             {
         		Map dtMap = dataMap(cluster.data)
                 displayDebugLog( "Map: " + dtMap )
-                if ( state.unwired == null )
-                	state.unwired = unwiredSwitch
+                if ( state.unwired instanceof String || state.unwired == null )
+                	state.unwired = parseUnwiredSwitch()
                 //if ( dtMap.get(110) == 0x0002 )
                 //	state.unwired = 'Left'
                 //if ( dtMap.get(111) == 0x0002)
                 //	state.unwired = 'Right'
-                if ( state.unwired != 'None' && !state.numButtons )
+                if ( state.unwired != 0x00 && !state.numButtons )
                 	getNumButtons()
                 event = event + setTemp( dtMap.get(3) )
                 displayDebugLog("Number of Switches: ${state.numSwitches}")
@@ -379,16 +381,15 @@ private def parseCatchAllMessage(String description)
                         displayInfoLog( 'Software Switch is ' + device.currentValue('switch') )
                         break
                     case 2:
-                    	displayInfoLog( "Unwired Switch is ${state.unwired}" )
-                		displayInfoLog( "Hardware Switches are (" + onoff + "," + (dtMap.get(101) ? "on" : "off") +")" )
+                    	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
+                    	displayInfoLog( "Unwired Switch Code: ${state.unwired}" )
+                		displayInfoLog( "Hardware Switches are (" + onoff + "," + onoff2 +")" )
                         displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + getChildDevices()[0].device.currentValue('switch') + ')' )
                     	
                         try
                         {
                         	//Try to stop child device(s) from going offline
-                            def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
-                        	//if ( getChildDevices()[0].device.currentValue('switch') != onoff2 )
-                            	getChildDevices()[0].sendEvent(name: 'switch', value: onoff2 )
+                            getChildDevices()[0].sendEvent(name: 'switch', value: onoff2 )
                             displayDebugLog("Child DH synced with hardware - ${getChildDevices()[0].device.currentValue('switch')} - ${onoff2}")
                         }
                 		catch(Exception e) 
@@ -397,8 +398,26 @@ private def parseCatchAllMessage(String description)
         				}    
                         break
                     case 3:
-                    	displayInfoLog( "Switches are (" + onoff + "," + (dtMap.get(101) ? "on" : "off") + "," + (dtMap.get(102) ? "on" : "off")+")" )
-                		break
+                    	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
+                        def onoff3 = (dtMap.get(102) ? 'on' : 'off' )
+                    	displayInfoLog( "Unwired Switch Code: ${state.unwired}" )
+                		displayInfoLog( "Hardware Switches are (${onoff}, ${onoff2}, ${onoff3})" )
+                        displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + getChildDevices()[0].device.currentValue('switch') + ',' + getChildDevices()[1].device.currentValue('switch')+ ')' )
+                    	
+                        try
+                        {
+                        	//Try to stop child device(s) from going offline
+                            getChildDevices()[0].sendEvent(name: 'switch', value: onoff2 )
+                            displayDebugLog("Child 2 DH synced with hardware - ${getChildDevices()[0].device.currentValue('switch')} - ${onoff2}")
+                            getChildDevices()[1].sendEvent(name: 'switch', value: onoff3 )
+                            displayDebugLog("Child 3 DH synced with hardware - ${getChildDevices()[1].device.currentValue('switch')} - ${onoff3}")
+                        }
+                		catch(Exception e) 
+        				{
+							displayDebugLog( "${e}")
+        				}    
+                        break
+                    	
                     default:
                     	displayDebugLog("Number of switches unrecognised: ${state.numSwitches}")
                 }
@@ -425,6 +444,8 @@ private def parseCatchAllMessage(String description)
                 case state.endp1b:
                 case state.endp2:
                 case state.endp2b:
+                case state.endp3:
+                case state.endp3b:
 				state.flag = "soft"
                     break
                 default:
@@ -502,22 +523,18 @@ def parseSwitchOnOff(Map descMap)
         case state.endp1:
             state.sw1 = onoff
             break
-        case state.endp1b: // button 1 pressed
-        	state.flag = 'hard'
-            break
         case state.endp2: 
         	state.sw2 = onoff
         	break
-        case state.endp2b: // button 2 pressed
-        //case 0x07:
-        //case 0x08:
-        	state.flag = "hard"
+        case state.endp3:
+        	state.sw3 = onoff
             break
         case state.endpboth: // both buttons pressed
         	state.flag = "both"
 			break
         default:
-        	displayDebugLog( "ClusterID 0x0006 with unknown endpoint $descMap.endpoint" )
+        	state.flag = 'hard'
+        	//displayDebugLog( "ClusterID 0x0006 with unknown endpoint $descMap.endpoint" )
      }
      //displayDebugLog("$descMap.endpoint " + showFlags())
 }
@@ -580,12 +597,14 @@ def refresh()
     state.flag = "refresh"
     def dat = new Date()
     state.lastTempTime = dat.time
-    settings.unwiredSwitch = settings.unwiredSwitch == null ? 'None' : settings.unwiredSwitch
+    //settings.unwiredSwitch = settings.unwiredSwitch == null ? 'None' : settings.unwiredSwitch
     settings.tempOffset = settings.tempOffset == null ? 0 : settings.tempOffset 
     settings.infoLogging = settings.infologging == null ? true : settings.infoLogging
     settings.debugLogging = settings.debugLogging == null ? false : settings.debugLogging
     //log.debug "${unwiredSwitch}  ${tempOffset}  ${infoLogging}  ${debugLogging}"
-    state.unwired = unwiredSwitch == null ? 'None' : unwiredSwitch 
+    //displayDebugLog("unwired enum: ${unwiredSwitch} ${unwiredSwitch.value}")
+    state.unwired = parseUnwiredSwitch()
+    
     state.tempNow = state.tempNow == null ? 0 : state.tempNow
     state.tempNow2 = state.tempNow2 == null ? 0 : state.tempNow2
     state.tempOffset = tempOffset == null ? 0 : tempOffset
@@ -621,7 +640,7 @@ def refresh()
         //sendEvent(name: "switch2", value: getChildDevices()[0])
         getChildDevices()[0].sendEvent(name: 'checkInterval', value: '3000')
     }                    
-    if ( state.unwired != "None" )
+    if ( state.unwired != 0x00 )
     	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held', 'double'], isStateChange: true)
         
     def cmds = zigbee.readAttribute(0x0002, 0) + 
@@ -665,8 +684,10 @@ private getNumButtons()
      		state.numButtons = 2
             state.endp1 = 0x02
             state.endp2 = 0xF2
+            state.endp3 = 0xF3
             state.endp1b = 0x04
             state.endp2b = 0xF5
+            state.endp3b = 0xF6
             break
         case "lumi.ctrl_neutral2":
         case "lumi.switch.b2lacn02":
@@ -674,13 +695,21 @@ private getNumButtons()
         	state.numButtons = 5
             state.endp1 = 0x02
             state.endp2 = 0x03
+            state.endp3 = 0xF3
             state.endp1b =0x04
             state.endp2b = 0x05
+            state.endp3b = 0xF6
             break
         case "lumi.switch.l3acn3":
-        	displayInfoLog("3-Button switch not yet fully implemented.")
+        	//displayInfoLog("3-Button switch not yet fully implemented.")
             state.numSwitches = 3
             state.numButtons = 7
+            state.endp1 = 0x01
+            state.endp2 = 0x02
+            state.endp3 = 0x03
+            state.endp1b = 0x29
+            state.endp2b = 0x2A
+            state.endp3b = 0x2B
             break
         default:
         	displayDebugLog("Unknown device model: " + model)
@@ -690,6 +719,39 @@ private getNumButtons()
     displayDebugLog( "Setting Number of Buttons to " + state.numButtons )
 }
 
+private byte parseUnwiredSwitch()
+{
+	byte unwired
+	switch ( unwiredSwitch )
+    {
+    	case null:
+        case 'None': 
+        	unwired = 0x00
+            break
+        case 'First':
+        	unwired = 0x01
+            break
+        case 'Second':
+        	unwired = 0x02
+            break
+        case 'Third':
+        	unwired = 0x04
+            break
+        case 'First_and_Second':
+        	unwired = 0x03
+            break
+        case 'First_and_Third':
+        	unwired = 0x05
+            break
+        case 'Second_and_Third':
+        	unwired = 0x06
+            break
+        default:
+        	displayDebugLog("Invalid unwired switch: ${unwiredSwitch}")
+    }
+    //displayDebugLog("Unwired Code: ${state.unwired}")
+    return unwired
+}
 private Integer convertHexToInt(hex) 
 {
 	Integer.parseInt(hex,16)
