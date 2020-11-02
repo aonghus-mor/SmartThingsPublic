@@ -38,24 +38,11 @@ metadata
         capability "Temperature Measurement"
         capability "Health Check"
         
-        //command "on3"
-        //command "off3"
-        //command "on2"
-        //command "off2"
-        //command "on1"
-        //command "off1"
-        //command "buttonpush"
-        //command "doButtonPush"
-        //command "leftButtonPush"
-        //command "rightButtonPush"
         command "childOn"
         command "childOff"
         
-        
-        //attribute "switch","ENUM", ["on","off", "turningOn", "turningOff", "held", "released", "pushed"]
-        //attribute "switch2", "string"
         attribute "lastCheckin", "string"
-        attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh"]
+        attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh","double"]
         //attribute "momentary", "ENUM", ["Pressed", "Standby"]
         attribute "button", "ENUM", ["Pressed", "Held", "Standby"]
         //attribute "tempOffset", "number"
@@ -88,8 +75,7 @@ metadata
 def parse(String description)
 {
    	displayDebugLog( "Parsing '${description}'" )
-    //Map testmap = zigbee.parseDescriptionAsMap(description)
-    //displayDebugLog("As Map: " + testmap)
+    
     def dat = new Date()
     def newcheck = dat.time
     state.lastCheckTime = state.lastCheckTime == null ? 0 : state.lastCheckTime
@@ -105,6 +91,8 @@ def parse(String description)
         	clearFlags()
     }
     */
+    
+        
     displayDebugLog( "(parse)flags: " + showFlags() )
   
    	def events = []
@@ -120,6 +108,12 @@ def parse(String description)
     	events = parseFlags()
     else 
     	events = events + parseFlags()
+    
+    if ( events[0] != null )
+    {
+    	state.flag = null
+        clearFlags()
+    }
     
     def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) + "\n" + state.lastPressType
     events << createEvent(name: "lastCheckin", value: now, descriptionText: "Check-In", displayed: debugLogging)
@@ -150,7 +144,7 @@ def updateTemp()
 private def parseFlags()
 {
     def events = []
-    def lastPress
+    def lastPress = state.flag
     def makeEvent = true
     displayDebugLog( "parsing flags: " + showFlags() )
     if ( state.unwired instanceof String || state.unwired == null )
@@ -263,15 +257,15 @@ private def parseFlags()
             	{
                 	events << createEvent(name: 'switch', value: 'off')
                     if ( (state.unwired & 0x01) == 0x00 )
-                    	events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 2 : 1], isStateChange: true)
+                    	events = events + buttondouble(1,2)
                     state.flag = null
                 }
             	else if (state.sw1 == 'on' )
             	{
                     events 	<< createEvent(name: 'switch', value: 'on', isStateChange: true)
-                    events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 2 : 1], isStateChange: true)
+                    events = events + buttondouble(1,2)
                     state.flag = null
-                    displayDebugLog("Unwired type: ${state.unwired} ${state.unwired & 0x01}")
+                    // displayDebugLog("Unwired type: ${state.unwired} ${state.unwired & 0x01}")
                 	if ( (state.unwired & 0x01) != 0x00 )
                     {
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp1] ))
@@ -286,13 +280,13 @@ private def parseFlags()
             	{
                 	getChildDevices()[0].sendEvent(name: 'switch', value: 'off' )
                     if ( (state.unwired & 0x02) == 0x00 )
-                    	events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 4 : 3], isStateChange: true)
+                    	buttondouble(3,4)
                     state.flag = null
                 }
             	else if (state.sw2 == 'on' )
             	{
                     getChildDevices()[0].sendEvent(name: 'switch', value: 'on', isStateChange: true)
-                    events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 4 : 3], isStateChange: true)
+                    events = events + buttondouble(3,4)
                     state.flag = null
                 	if ( (state.unwired & 0x02) != 0x00 )
                     {
@@ -308,13 +302,13 @@ private def parseFlags()
             	{
                 	getChildDevices()[1].sendEvent(name: 'switch', value: 'off' )
                     if ( (state.unwired & 0x04) == 0x00 )
-                    	events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 6 : 5], isStateChange: true)
-                	state.flag = null
+                    	events = events + buttondouble(5,6)
+                    state.flag = null
                 }
             	else if (state.sw3 == 'on' )
             	{
             		getChildDevices()[1].sendEvent(name: 'switch', value: 'on', isStateChange: true)
-                    events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: (state.flag == 'double') ? 6 : 5], isStateChange: true)
+                    events = events + buttondouble(5,6)
                     state.flag = null
                 	if ( (state.unwired & 0x04) != 0x00 )
                     {
@@ -341,6 +335,19 @@ private def parseFlags()
   	events
 }
 
+private def buttondouble(i,j)
+{
+	def events = []
+    if ( state.flag == 'double' )
+    {
+        events 	<< createEvent(	name: 'button', value: 'double', data:[buttonNumber: i], isStateChange: true)
+        events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: j], isStateChange: true)
+    }
+    else
+        events 	<< createEvent(	name: 'button', value: 'pushed', data:[buttonNumber: i], isStateChange: true)
+	events
+}
+
 private def clearFlags()
 {
 	//state.flag = null
@@ -365,11 +372,7 @@ private def parseCatchAllMessage(String description)
                 displayDebugLog( "Map: " + dtMap )
                 if ( state.unwired instanceof String || state.unwired == null )
                 	state.unwired = parseUnwiredSwitch()
-                //if ( dtMap.get(110) == 0x0002 )
-                //	state.unwired = 'Left'
-                //if ( dtMap.get(111) == 0x0002)
-                //	state.unwired = 'Right'
-                if ( state.unwired != 0x00 && !state.numButtons )
+                 if ( state.unwired != 0x00 && !state.numButtons )
                 	getNumButtons()
                 event = event + setTemp( dtMap.get(3) )
                 displayDebugLog("Number of Switches: ${state.numSwitches}")
@@ -377,20 +380,30 @@ private def parseCatchAllMessage(String description)
                 switch ( state.numSwitches )
                 {
                 	case 1:
-                    	displayInfoLog( 'Hardware Switch is ' + onoff )
+                    	displayInfoLog( "Hardware Switch is ${onoff}" )
                         displayInfoLog( 'Software Switch is ' + device.currentValue('switch') )
                         break
                     case 2:
                     	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
+                        def child = getChildDevices()[0]
                     	displayInfoLog( "Unwired Switch Code: ${state.unwired}" )
                 		displayInfoLog( "Hardware Switches are (" + onoff + "," + onoff2 +")" )
-                        displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + getChildDevices()[0].device.currentValue('switch') + ')' )
+                        displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child.device.currentValue('switch') + ')' )
                     	
                         try
                         {
                         	//Try to stop child device(s) from going offline
-                            getChildDevices()[0].sendEvent(name: 'switch', value: onoff2 )
-                            displayDebugLog("Child DH synced with hardware - ${getChildDevices()[0].device.currentValue('switch')} - ${onoff2}")
+                            displayDebugLog("Child DH synced with hardware - ${child.device.currentValue('switch')} - ${onoff2}")
+                            if ( (state.unwired & 0x02 ) == 0x00 )
+                          		child.sendEvent(name: 'switch', value: onoff2 )
+                            else
+                            {	
+                            	if ( child.device.currentValue('switch') == 'on' )
+                               	{
+                                	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
+                        			state.flag = 'soft'
+                           		}
+                            }
                         }
                 		catch(Exception e) 
         				{
@@ -399,18 +412,38 @@ private def parseCatchAllMessage(String description)
                         break
                     case 3:
                     	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
+                        def child2 = getChildDevices()[0]
                         def onoff3 = (dtMap.get(102) ? 'on' : 'off' )
+                        def child3 = getChildDevices()[1]
                     	displayInfoLog( "Unwired Switch Code: ${state.unwired}" )
                 		displayInfoLog( "Hardware Switches are (${onoff}, ${onoff2}, ${onoff3})" )
-                        displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + getChildDevices()[0].device.currentValue('switch') + ',' + getChildDevices()[1].device.currentValue('switch')+ ')' )
+                        displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child2.device.currentValue('switch') + ',' + child3.device.currentValue('switch')+ ')' )
                     	
                         try
                         {
                         	//Try to stop child device(s) from going offline
-                            getChildDevices()[0].sendEvent(name: 'switch', value: onoff2 )
-                            displayDebugLog("Child 2 DH synced with hardware - ${getChildDevices()[0].device.currentValue('switch')} - ${onoff2}")
-                            getChildDevices()[1].sendEvent(name: 'switch', value: onoff3 )
-                            displayDebugLog("Child 3 DH synced with hardware - ${getChildDevices()[1].device.currentValue('switch')} - ${onoff3}")
+                           	displayDebugLog("Child 2 DH synced with hardware - ${child2.device.currentValue('switch')} - ${onoff2}")
+                            if ( (state.unwired & 0x02 ) == 0x00 )
+                          		child.sendEvent(name: 'switch', value: onoff2 )
+                            else
+                            {	
+                            	if ( child2.device.currentValue('switch') == 'on' )
+                               	{
+                                	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
+                        			state.flag = 'soft'
+                           		}
+                            }
+ 							displayDebugLog("Child 3 DH synced with hardware - ${child3.device.currentValue('switch')} - ${onoff3}")
+                            if ( (state.unwired & 0x04 ) == 0x00 )
+                          		child3.sendEvent(name: 'switch', value: onoff3 )
+                            else
+                            {	
+                            	if ( child3.device.currentValue('switch') == 'on' )
+                               	{
+                                	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp3] ))
+                        			state.flag = 'soft'
+                           		}
+                            }
                         }
                 		catch(Exception e) 
         				{
@@ -423,10 +456,11 @@ private def parseCatchAllMessage(String description)
                 }
                 try
                 {
-                	if ( device.currentValue('switch') != onoff )
-                	{
-                    	event << createEvent(name: 'switch', value: onoff )
-                        displayDebugLog("DH synced with hardware - ${device.currentValue('switch')} - ${onoff}")
+                	displayDebugLog("DH synced with hardware - ${device.currentValue('switch')} - ${onoff}")
+                    if ( (state.unwired & 0x01 ) != 0x00 && device.currentValue('switch') == 'on' )
+                    {	
+                    	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp1] ))
+                        state.flag = 'soft'
                     }
                 }
                 catch(Exception e) 
@@ -466,7 +500,7 @@ private def setTemp(int temp)
         if ( getTemperatureScale() != "C" ) 
             temp = celsiusToFahrenheit(temp)
         //log.debug "${temp} - ${tempOffset}"
-        state.tempNow2 = temp + ( state.tempOffset == null ? 0 : tempOffset )      
+        state.tempNow2 = temp + state.tempOffset     
         event << createEvent(name: "temperature", value: state.tempNow2, unit: getTemperatureScale())
         displayDebugLog("Temperature is now ${state.tempNow2}°")          	
 	}
@@ -542,10 +576,11 @@ def parseSwitchOnOff(Map descMap)
 private def parseCustomMessage(String description) 
 {
 	displayDebugLog( "Parsing Custom Message: $description" )
+    //displayDebugLog("lastPressType: ${state.lastPressType}")
 	if (description?.startsWith('on/off: ')) {
     	if (description == 'on/off: 0')
         {
-        	if ( state.flag != 'double' && state.flag != 'soft' )
+        	if ( state.lastPressType != 'double' && state.flag != 'soft' )
             	state.flag = "held"
 		}
 		else if (description == 'on/off: 1')
