@@ -46,17 +46,27 @@ metadata
         //attribute "momentary", "ENUM", ["Pressed", "Standby"]
         attribute "button", "ENUM", ["Pressed", "Held", "Standby"]
         //attribute "tempOffset", "number"
-        
+   
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", 
         		manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.ctrl_neutral1", deviceJoinName: "Aqara Switch QBKG04LM"
-    	fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
-                manufacturer: "LUMI", model: "lumi.switch.b2lacn02", deviceJoinName: "Aqara Switch QBKG22LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.ctrl_ln1.aq1", deviceJoinName: "Aqara Switch QBKG11LM"      
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.ctrl_ln2.aq1", deviceJoinName: "Aqara Switch QBKG12LM"       
+    	fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.b1lacn02", deviceJoinName: "Aqara Switch QBKG21LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
-                manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM"       
+                manufacturer: "LUMI", model: "lumi.switch.b2lacn02", deviceJoinName: "Aqara Switch QBKG22LM"
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b1nacn02", deviceJoinName: "Aqara Switch QBKG23LM"
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b2nacn02", deviceJoinName: "Aqara Switch QBKG24LM"
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM" 
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.n3acn3", deviceJoinName: "Aqara Switch QBKG26LM"           
     }
 	
     preferences 
@@ -93,7 +103,7 @@ def parse(String description)
     */
     
         
-    displayDebugLog( "(parse)flags: " + showFlags() )
+    //displayDebugLog( "(parse)flags: " + showFlags() )
   
    	def events = []
    
@@ -109,7 +119,7 @@ def parse(String description)
     else 
     	events = events + parseFlags()
     
-    if ( events[0] != null )
+    if ( events[0] != null && state.flag != 'held' )
     {
     	state.flag = null
         clearFlags()
@@ -551,7 +561,7 @@ def parseSwitchOnOff(Map descMap)
 	//parse messages on read attr cluster 0x0006
 	def onoff = descMap.value[-1] == "1" ? "on" : "off"
     if ( descMap.value[1] == "c" )
-    	state.flag = 'double'
+    	state.flag = 'dble'
 	switch ( descMap.endpoint.toInteger() )
     {
         case state.endp1:
@@ -577,12 +587,10 @@ private def parseCustomMessage(String description)
 {
 	displayDebugLog( "Parsing Custom Message: $description" )
     //displayDebugLog("lastPressType: ${state.lastPressType}")
-	if (description?.startsWith('on/off: ')) {
+	if (description?.startsWith('on/off: ')) 
+    {
     	if (description == 'on/off: 0')
-        {
-        	if ( state.lastPressType != 'double' && state.flag != 'soft' )
-            	state.flag = "held"
-		}
+        	state.flag = ( state.lastPressType == 'dble' ) ? 'double' : 'held'
 		else if (description == 'on/off: 1')
         	state.flag = "released"
 	}
@@ -685,7 +693,7 @@ def refresh()
     //if ( state.batteryPresent )
     //	cmds += zigbee.readAttribute(0x0001, 0) //+ zigbee.readAttribute(0x0001,0x0001) + zigbee.readAttribute(0x0001,0x0002)
                 
-     //cmds += zigbee.configureReporting(0x0000, 0, 0x29, 1800,7200,0x01)
+     cmds += zigbee.configureReporting(0x0000, 0, 0x29, 900,3600,0x01)
     
      displayDebugLog( cmds )
      //updated()
@@ -713,8 +721,7 @@ private getNumButtons()
 	String model = device.getDataValue("model")
     switch ( model ) 
     {
-    	case "lumi.ctrl_neutral1":
-        case "lumi.switch.b1lacn02":
+    	case "lumi.ctrl_neutral1": //QBKG03LM
         	state.numSwitches = 1
      		state.numButtons = 2
             state.endp1 = 0x02
@@ -724,8 +731,19 @@ private getNumButtons()
             state.endp2b = 0xF5
             state.endp3b = 0xF6
             break
-        case "lumi.ctrl_neutral2":
-        case "lumi.switch.b2lacn02":
+        case "lumi.ctrl_ln1.aq1": //QBKG11LM
+        case "lumi.switch.b1lacn02": //QBKG21LM
+        case "lumi.switch.b1nacn02": //QBKG23LM
+            state.numSwitches = 1
+     		state.numButtons = 2
+            state.endp1 = 0x01
+            state.endp2 = 0xF1
+            state.endp3 = 0xF2
+            state.endp1b = 0x04
+            state.endp2b = 0xF5
+            state.endp3b = 0xF6
+            break
+        case "lumi.ctrl_neutral2": //QBKG03LM
         	state.numSwitches = 2
         	state.numButtons = 5
             state.endp1 = 0x02
@@ -735,7 +753,20 @@ private getNumButtons()
             state.endp2b = 0x05
             state.endp3b = 0xF6
             break
-        case "lumi.switch.l3acn3":
+        case "lumi.ctrl_ln2.aq1": //QBKG12LM
+        case "lumi.switch.b2lacn02": //QBKG22LM
+        case "lumi.switch.b2nacn02": //QBKG24LM
+           	state.numSwitches = 2
+        	state.numButtons = 5
+            state.endp1 = 0x01
+            state.endp2 = 0x02
+            state.endp3 = 0xF3
+            state.endp1b =0x04
+            state.endp2b = 0x05
+            state.endp3b = 0xF6
+            break
+        case "lumi.switch.l3acn3": //QBKG25LM
+        case "lumi.switch.n3acn3": //QBKG26LM
         	//displayInfoLog("3-Button switch not yet fully implemented.")
             state.numSwitches = 3
             state.numButtons = 7
