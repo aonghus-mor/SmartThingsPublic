@@ -4,16 +4,15 @@
 metadata 
 {
 	definition (name: "srt323-thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
-                mnmn: "SmartThings", vid: "generic-thermostat-2", ocfDeviceType: "oic.d.thermostat") 
+                mnmn: "SmartThings", vid: "generic-radiator-thermostat-2", ocfDeviceType: "oic.d.thermostat") 
                 //minHubCoreVersion: '000.017.0012', executeCommandsLocally: false) 
     {
     	capability "Actuator"
 		capability "Temperature Measurement"
-		capability "Thermostat Heating Setpoint"
-        capability "Thermostat Cooling Setpoint"
-        capability "Thermostat Mode"
-        //capability "Thermostat"
-        capability "Thermostat Operating State"
+        capability "Thermostat"
+		//capability "Thermostat Heating Setpoint"
+        //capability "Thermostat Mode"
+        //capability "Thermostat Operating State"
 		capability "Configuration"
 		capability "Polling"
 		capability "Sensor"
@@ -21,10 +20,10 @@ metadata
         capability "Battery" // added by Aonghus Mor
         
 		//command "switchMode"
-        //command "quickSetHeat"
-		//command "setTemperature"
-		//command "setTempUp"
-		//command "setTempDown"
+        command "quickSetHeat"
+		command "setTemperature"
+		command "setTempUp"
+		command "setTempDown"
         //command "setAwayMode"
         
 		//command "setupDevice" 
@@ -39,7 +38,7 @@ metadata
 	simulator 
     {
 	}
-	/*
+
 	tiles (scale: 2)
     {
         multiAttributeTile(name:"mainTile", type: "thermostat", width: 6, height: 4, canChangeIcon: true)
@@ -98,7 +97,7 @@ metadata
 
 	main "mainTile"
     details(["mainTile", "battery", "refresh", "configure"]) //, "awayMode"])
-	*/
+
     preferences
     {
         section
@@ -201,9 +200,6 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 		case 1:
 			map.name = "heatingSetpoint"
 			break;
-        case 2:
-			map.name = "coolingSetpoint"
-			break;
 		default:
 			return [:]
 	}
@@ -213,12 +209,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 	state.size = cmd.size
 	state.scale = cmd.scale
 	state.precision = cmd.precision
-    //def events = []
-	//events << 
-    createEvent(map)
-    //map.name = "coolingSetpoint"
-    //events << createEvent(map)
-    //events
+	createEvent(map)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelReport cmd)
@@ -408,8 +399,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
         break
       case 0x02: 
       	state.scale = cmd.configurationValue[0]
-        def CorF = ( state.scale == 0 ) ? "C" : "F"
-        log.debug "Temperature scale: ${state.scale} - ${CorF}"
+        log.debug "Temperature scale: ${state.scale}"
         break
       case 0x03:
       	double deltaT = cmd.configurationValue[0] * 0.1
@@ -498,7 +488,7 @@ def refresh()
 	//	zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
 	//], 1000)
 }
-/*
+
 def quickSetHeat(degrees) 
 {
 	setHeatingSetpoint(degrees)
@@ -524,26 +514,10 @@ def setTemperature(temp)
 	log.debug "setTemperature $temp"
     quickSetHeat(temp)
 }
-*/
+
 def setHeatingSetpoint(degrees) 
 {
-	setSetpoint(degrees)
-    //sendEvent(name: 'heatingSetpoint', value: degrees, displayed: true, isStateChange: true)
-    //log.trace "setHeatingSetpoint scale: ${state.scale} precision: ${state.precision} setpoint: ${degrees}"
-}
-
-def setCoolingSetpoint(degrees) 
-{
-	def degs = degrees
-	if ( degs == null || degs == 0 )
-    	degs = device.currentValue("heatingSetpoint").toInteger()
-    setSetpoint(degs)
-    //sendEvent(name: 'coolingSetpoint', value: degs, displayed: true, isStateChange: true)
-    //log.trace "setCoolingSetpoint scale: ${state.scale} precision: ${state.precision} setpoint: ${degs}"
-}
-
-def setSetpoint(degrees) 
-{
+    log.debug "Heating setpoint to be set to: ${degrees}."
     // special codes, 100-103, are converted as below
     
     // Don't let the setpoint go below the frost protection temperature
@@ -570,8 +544,8 @@ def setSetpoint(degrees)
                 return
         }
     }
+   
     sendEvent(name: 'heatingSetpoint', value: degrees, displayed: true, isStateChange: true)
-    sendEvent(name: 'coolingSetpoint', value: degrees, displayed: true, isStateChange: true)
 
 	//def deviceScale = state.scale ?: 1
 	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
@@ -640,8 +614,8 @@ def updateIfNeeded()
 
 private sendConfig(cmds)
 {
-	//def setpointRange = [5,103]
-    //sendEvent(name: "heatingSetpointRange", value: setpointRange, displayed: false, isStateChange: true)
+    def setpointRange = [4,105]
+    sendEvent(name: "heatingSetpointRange", value: setpointRange, displayed: false, isStateChange: true)
     // Nodes controlled by Thermostat Mode Set - not sure this is needed?
     cmds << zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:[zwaveHubNodeId]).format()
 
@@ -702,10 +676,10 @@ private sendRefresh(cmds)
 {
 	cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
 		//
-	//cmds << zwave.thermostatModeV1.thermostatModeGet().format()
+	cmds << zwave.thermostatModeV1.thermostatModeGet().format()
 	cmds << zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
-    //cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x02).format()
-    //cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x03).format()
+    cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x02).format()
+    cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x03).format()
 }
 
 private getUserWakeUp(userWake) 
