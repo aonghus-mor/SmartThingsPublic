@@ -89,8 +89,8 @@ def parse(String description)
     def dat = new Date()
     def newcheck = dat.time
     state.lastCheckTime = state.lastCheckTime == null ? 0 : state.lastCheckTime
-    def diffcheck = newcheck - state.lastCheckTime
-    displayDebugLog(newcheck + " " + state.lastCheckTime + " " + diffcheck)
+    //def diffcheck = newcheck - state.lastCheckTime
+    //displayDebugLog(newcheck + " " + state.lastCheckTime + " " + diffcheck)
     state.lastCheckTime = newcheck
     /*
     if ( diffcheck > 2000 ) // if the state has not been resolved after 2 seconds, clear the flags
@@ -110,7 +110,7 @@ def parse(String description)
    	if (description?.startsWith('catchall:')) 
 		events = events + parseCatchAllMessage(description)
 	else if (description?.startsWith('read attr -')) 
-		events << parseReportAttributeMessage(description)
+		events = events + parseReportAttributeMessage(description)
     else if (description?.startsWith('on/off: '))
         parseCustomMessage(description) 
     
@@ -382,7 +382,7 @@ private def parseCatchAllMessage(String description)
                 displayDebugLog( "Map: " + dtMap )
                 if ( state.unwired instanceof String || state.unwired == null )
                 	state.unwired = parseUnwiredSwitch()
-                 if ( state.unwired != 0x00 && !state.numButtons )
+                if ( state.unwired != 0x00 && !state.numButtons )
                 	getNumButtons()
                 event = event + setTemp( dtMap.get(3) )
                 displayDebugLog("Number of Switches: ${state.numSwitches}")
@@ -477,23 +477,30 @@ private def parseCatchAllMessage(String description)
         		{
 					displayDebugLog( "${e}")
         		}
-                displayDebugLog("Flags: " + showFlags() )
+                //displayDebugLog("Flags: " + showFlags() )
             }
         	break
         case 0x0006: 	
-        	//def onoff = cluster.data[0] == 0x01 ? "on" : "off"
+        	def onoff = cluster.data[0] == 0x01 ? "on" : "off"
+            state.flag = "soft"
         	switch ( cluster.sourceEndpoint) 
             {
         		case state.endp1:
-                case state.endp1b:
+                	state.sw1 = onoff
+                    break
                 case state.endp2:
-                case state.endp2b:
+                	state.sw2 = onoff
+                    break
                 case state.endp3:
+                	state.sw3 = onoff
+                    break
+                case state.endp1b:
+                case state.endp2b:
                 case state.endp3b:
-				state.flag = "soft"
                     break
                 default:
                 	displayDebugLog( "Unknown SourceEndpoint: $cluster.sourceEndpoint" )
+                    state.flag = null
     		}
     }
      return event
@@ -502,6 +509,7 @@ private def parseCatchAllMessage(String description)
 private def setTemp(int temp)
 { 
     def event = []
+    temp = temp ? temp : 0
     //tempOffset = tempOffset == null ? 0 : tempOffset
     if ( state.tempNow != temp || state.tempOffset != tempOffset )
     {
@@ -562,24 +570,28 @@ def parseSwitchOnOff(Map descMap)
 	def onoff = descMap.value[-1] == "1" ? "on" : "off"
     if ( descMap.value[1] == "c" )
     	state.flag = 'dble'
-	switch ( descMap.endpoint.toInteger() )
-    {
-        case state.endp1:
-            state.sw1 = onoff
-            break
-        case state.endp2: 
-        	state.sw2 = onoff
-        	break
-        case state.endp3:
-        	state.sw3 = onoff
-            break
-        case state.endpboth: // both buttons pressed
-        	state.flag = "both"
-			break
-        default:
-        	state.flag = 'hard'
+    //displayDebugLog("Value: ${descMap.value[2..5]}")
+    if ( descMap.value[2..5] != "0000" )
+	{
+    	switch ( descMap.endpoint.toInteger() )
+    	{
+        	case state.endp1:
+            	state.sw1 = onoff
+            	break
+        	case state.endp2: 
+        		state.sw2 = onoff
+        		break
+        	case state.endp3:
+        		state.sw3 = onoff
+            	break
+        	case state.endpboth: // both buttons pressed
+        		state.flag = "both"
+				break
+        	default:
+        		state.flag = 'hard'
         	//displayDebugLog( "ClusterID 0x0006 with unknown endpoint $descMap.endpoint" )
-     }
+     	}
+	}
      //displayDebugLog("$descMap.endpoint " + showFlags())
 }
 
@@ -687,13 +699,18 @@ def refresh()
     	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held', 'double'], isStateChange: true)
         
     def cmds = zigbee.readAttribute(0x0002, 0) + 
-           		zigbee.readAttribute(0x0000, 0x0007) +
-                zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] )
+           		zigbee.readAttribute(0x0000, 0x0007) /*+
+                zigbee.readAttribute(0x0006,0,[destEndpoint: 0x01] ) +
+    			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) +
+    			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] ) */
+    //if ( state.numButtons > 1 )
+    //	cmds += zigbee.readAttribute(0x0006,0,[destEndpoint: state.endp2] )
            
     //if ( state.batteryPresent )
     //	cmds += zigbee.readAttribute(0x0001, 0) //+ zigbee.readAttribute(0x0001,0x0001) + zigbee.readAttribute(0x0001,0x0002)
                 
-     cmds += zigbee.configureReporting(0x0000, 0, 0x29, 900,3600,0x01)
+     cmds += zigbee.configureReporting(0x0000, 0, DataType.INT16, 1800, 3000, null) +
+     		 zigbee.configureReporting(0x0002, 0, DataType.INT16, 1800, 3000, 0x0001)
     
      displayDebugLog( cmds )
      //updated()
@@ -820,7 +837,9 @@ private byte parseUnwiredSwitch()
 }
 private Integer convertHexToInt(hex) 
 {
-	Integer.parseInt(hex,16)
+	int result = Integer.parseInt(hex,16)
+    displayDebugLog("HextoInt: ${hex}  ${result}")
+    return result
 }
 
 private Map dataMap(data)
