@@ -738,7 +738,7 @@ private getNumButtons()
 	String model = device.getDataValue("model")
     switch ( model ) 
     {
-    	case "lumi.ctrl_neutral1": //QBKG03LM
+    	case "lumi.ctrl_neutral1": //QBKG04LM
         	state.numSwitches = 1
      		state.numButtons = 2
             state.endp1 = 0x02
@@ -769,6 +769,7 @@ private getNumButtons()
             state.endp1b =0x04
             state.endp2b = 0x05
             state.endp3b = 0xF6
+            state.endpboth = 0x06
             break
         case "lumi.ctrl_ln2.aq1": //QBKG12LM
         case "lumi.switch.b2lacn02": //QBKG22LM
@@ -778,9 +779,10 @@ private getNumButtons()
             state.endp1 = 0x01
             state.endp2 = 0x02
             state.endp3 = 0xF3
-            state.endp1b =0x04
-            state.endp2b = 0x05
+            state.endp1b =0x05
+            state.endp2b = 0x06
             state.endp3b = 0xF6
+            state.endpboth = 0x07
             break
         case "lumi.switch.l3acn3": //QBKG25LM
         case "lumi.switch.n3acn3": //QBKG26LM
@@ -797,7 +799,7 @@ private getNumButtons()
         default:
         	displayDebugLog("Unknown device model: " + model)
     }
-    state.endpboth = 0x06
+    
     sendEvent(name: 'numberOfButtons', value: state.numButtons, displayed: false )
     displayDebugLog( "Setting Number of Buttons to " + state.numButtons )
 }
