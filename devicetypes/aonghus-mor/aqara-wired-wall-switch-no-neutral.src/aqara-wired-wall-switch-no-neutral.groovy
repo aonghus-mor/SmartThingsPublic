@@ -554,6 +554,13 @@ private def parseReportAttributeMessage(String description)
  		case "0006":  //button press
         	parseSwitchOnOff(descMap)
             break
+        case "000C": //analog input
+        	diplayDebugLog("Endpoint 0x000C seen and ignored") 
+        	break
+        case "0012": //Multistate Input
+        	state.flag = 'hard'
+   			displayDebugLog("Endpoint 0x0012 seen for hard press.")
+            break
  		//case "0008":
         //	if ( descMap.attrId == "0000")
     	//		event = createEvent(name: "switch", value: "off")
@@ -882,6 +889,19 @@ private Map dataMap(data)
             	resultMap.put(lbl, x )
                 it = it + 7
                 break  
+            case DataType.UINT64:
+            	long x = 0x0000000000000000
+                x |= data.get(it+9) << 56
+                x |= data.get(it+8) << 48
+                x |= data.get(it+7) << 40
+                x |= data.get(it+6) << 32
+                x |= data.get(it+5) << 24
+                x |= data.get(it+4) << 16
+                x |= data.get(it+3) << 8
+                x |= data.get(it+2)
+                resultMap.put(lbl, x )
+                it = it + 10
+                break 
             case DataType.INT8:
             	resultMap.put(lbl, (short)(data.get(it+2)))
                 it = it + 3
@@ -889,7 +909,13 @@ private Map dataMap(data)
              case DataType.INT16:
             	resultMap.put(lbl, (int)((data.get(it+3)<<8) | data.get(it+2)))
                 it = it + 4
-                break   
+                break
+            case DataType.FLOAT4:
+                int x = (0x00000000 | (((((data.get(it+5) << 8) | data.get(it+4)) << 8 ) | data.get(it+3)) << 8 ) | data.get(it+2))
+                float y = Float.intBitsToFloat(x) 
+            	resultMap.put(lbl,y)
+                it = it + 6
+                break
             default: displayDebugLog( "unrecognised type in dataMap: " + zigbee.convertToHexString(type) )
             	return resultMap
         }
