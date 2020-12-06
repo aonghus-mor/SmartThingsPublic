@@ -9,10 +9,10 @@ metadata
     {
     	capability "Actuator"
 		capability "Temperature Measurement"
-        capability "Thermostat"
-		//capability "Thermostat Heating Setpoint"
-        //capability "Thermostat Mode"
-        //capability "Thermostat Operating State"
+        //capability "Thermostat"
+		capability "Thermostat Heating Setpoint"
+        capability "Thermostat Mode"
+        capability "Thermostat Operating State"
 		capability "Configuration"
 		capability "Polling"
 		capability "Sensor"
@@ -38,7 +38,7 @@ metadata
 	simulator 
     {
 	}
-
+	/*
 	tiles (scale: 2)
     {
         multiAttributeTile(name:"mainTile", type: "thermostat", width: 6, height: 4, canChangeIcon: true)
@@ -97,7 +97,8 @@ metadata
 
 	main "mainTile"
     details(["mainTile", "battery", "refresh", "configure"]) //, "awayMode"])
-
+	*/
+    
     preferences
     {
         section
@@ -399,7 +400,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
         break
       case 0x02: 
       	state.scale = cmd.configurationValue[0]
-        log.debug "Temperature scale: ${state.scale}"
+        log.debug "Temperature scale: ${state.scale} => ${state.scale == 0 ? 'C' : 'F'}"
         break
       case 0x03:
       	double deltaT = cmd.configurationValue[0] * 0.1
@@ -465,9 +466,9 @@ def poll()
 	state.refreshNeeded = true
 	// Normally this won't do anything as the thermostat is asleep, 
     // but do this in case it helps with the initial config
-	def cmds = []
-    sendRefresh(cmds)
-    delayBetween(cmds,1000)
+	//def cmds = []
+    //sendRefresh(cmds)
+    //delayBetween(cmds,1000)
 }
 
 def refresh()
@@ -478,9 +479,9 @@ def refresh()
     
     // Normally this won't do anything as the thermostat is asleep, 
     // but do this in case it helps with the initial config
-    def cmds = []
-    sendRefresh(cmds)
-    delayBetween(cmds,1000)
+    //def cmds = []
+    //sendRefresh(cmds)
+    //delayBetween(cmds,1000)
 	//delayBetween([
 	//	zwave.sensorMultilevelV1.sensorMultilevelGet().format(), // current temperature
 	//	zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format(),
@@ -489,6 +490,7 @@ def refresh()
 	//], 1000)
 }
 
+/*
 def quickSetHeat(degrees) 
 {
 	setHeatingSetpoint(degrees)
@@ -514,6 +516,7 @@ def setTemperature(temp)
 	log.debug "setTemperature $temp"
     quickSetHeat(temp)
 }
+*/
 
 def setHeatingSetpoint(degrees) 
 {
@@ -545,7 +548,7 @@ def setHeatingSetpoint(degrees)
         }
     }
    
-    sendEvent(name: 'heatingSetpoint', value: degrees, displayed: true, isStateChange: true)
+    sendEvent(name: 'heatingSetpoint', value: degrees, unit: (state.scale == 1 ? 'F' : 'C'), displayed: true, isStateChange: true)
 
 	//def deviceScale = state.scale ?: 1
 	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
@@ -579,16 +582,6 @@ def updateIfNeeded()
     	cmds << zwave.batteryV1.batteryGet().format()
     }
         
-	if (state.refreshNeeded)
-    {
-        log.debug "Refresh"
-        //sendEvent(name:"SRT321", value: "Refresh")
-		//cmds << zwave.basicV1.basicSet(value: (state.awayMode ? 0x00 : 0xFF)).format() 
-        //cmds << zwave.basicV1.basicGet().format()
-        sendRefresh(cmds)
-       	state.refreshNeeded = false
-    }
-    
     if (state.updateNeeded)
     {
         log.debug "Updating setpoint $state.setpoint"
@@ -598,7 +591,19 @@ def updateIfNeeded()
         														scale: state.scale, 
                                                                 precision: state.p, 
                                                                 scaledValue: setpoint).format()
+        cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
+	
         state.updateNeeded = false
+    }
+    
+    if (state.refreshNeeded)
+    {
+        log.debug "Refresh"
+        //sendEvent(name:"SRT321", value: "Refresh")
+		//cmds << zwave.basicV1.basicSet(value: (state.awayMode ? 0x00 : 0xFF)).format() 
+        //cmds << zwave.basicV1.basicGet().format()
+        sendRefresh(cmds)
+       	state.refreshNeeded = false
     }
     
     if (state.configNeeded)
