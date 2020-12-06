@@ -724,6 +724,7 @@ def refresh()
     }                    
     if ( state.unwired != 0x00 )
     	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held', 'double'], isStateChange: true)
+    sendEvent( name: 'checkInterval', value: 3000, data: [ protocol: 'zigbee', hubHardwareId: device.hub.hardwareID ] )
         
     def cmds = zigbee.readAttribute(0x0002, 0) + 
            		zigbee.readAttribute(0x0000, 0x0007) /*+
