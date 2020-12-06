@@ -37,6 +37,7 @@ metadata
         capability "Button"
         capability "Temperature Measurement"
         capability "Health Check"
+        capability "Power Meter"
         
         command "childOn"
         command "childOff"
@@ -384,7 +385,7 @@ private def parseCatchAllMessage(String description)
                 	state.unwired = parseUnwiredSwitch()
                 if ( state.unwired != 0x00 && !state.numButtons )
                 	getNumButtons()
-                event = event + setTemp( dtMap.get(3) )
+                event = event + setTemp( dtMap.get(3) ) + ( dtMap.get(149) ? getWatts( dtMap.get(149) ) : [] )
                 displayDebugLog("Number of Switches: ${state.numSwitches}")
                 def onoff = (dtMap.get(100) ? "on" : "off")
                 switch ( state.numSwitches )
@@ -526,6 +527,19 @@ private def setTemp(int temp)
     return event
 }
 
+private def getWatts(float pwr)
+{
+	def event = []
+    pwr = pwr ? pwr : 0.0
+    if ( pwr != state.power )
+    {	
+    	state.power = pwr
+    	event << creatEvent(name: 'power', value: pwr)
+    }
+    displayDebugLog("getPower: ${pwr} W")
+	return event
+}
+
 private def parseReportAttributeMessage(String description) 
 {
 	Map descMap = (description - "read attr - ").split(",").inject([:]) { map, param ->
@@ -555,7 +569,13 @@ private def parseReportAttributeMessage(String description)
         	parseSwitchOnOff(descMap)
             break
         case "000C": //analog input
-        	diplayDebugLog("Endpoint 0x000C seen and ignored") 
+        	if ( descMap.attrID == "0055" )
+            {
+            	int x = Integer.parseInt(descMap.value, 16)
+            	float y = Float.intBitsToFloat(x)
+            	event = getWatts(y)
+            }
+        	//displayDebugLog("Power: ${y} Watts")
         	break
         case "0012": //Multistate Input
         	state.flag = 'hard'
@@ -757,13 +777,21 @@ private getNumButtons()
             break
         case "lumi.ctrl_ln1.aq1": //QBKG11LM
         case "lumi.switch.b1lacn02": //QBKG21LM
+        	state.numSwitches = 1
+     		state.numButtons = 2
+            state.endp1 = 0x01
+            state.endp2 = 0xF1
+            state.endp3 = 0xF2
+            state.endp1b = 0x04
+            state.endp2b = 0xF5
+            state.endp3b = 0xF6
         case "lumi.switch.b1nacn02": //QBKG23LM
             state.numSwitches = 1
      		state.numButtons = 2
             state.endp1 = 0x01
             state.endp2 = 0xF1
             state.endp3 = 0xF2
-            state.endp1b = 0x04
+            state.endp1b = 0x05
             state.endp2b = 0xF5
             state.endp3b = 0xF6
             break
