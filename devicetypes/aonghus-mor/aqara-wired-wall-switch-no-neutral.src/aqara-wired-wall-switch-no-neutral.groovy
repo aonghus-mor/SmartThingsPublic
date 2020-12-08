@@ -38,6 +38,7 @@ metadata
         capability "Temperature Measurement"
         capability "Health Check"
         capability "Power Meter"
+        capability "Polling"
         
         command "childOn"
         command "childOff"
@@ -372,7 +373,7 @@ private def parseCatchAllMessage(String description)
 {
 	def cluster = zigbee.parse(description)
 	displayDebugLog( cluster )
-    def event = []
+    def events = []
     
     switch ( cluster.clusterId ) 
     {
@@ -385,7 +386,12 @@ private def parseCatchAllMessage(String description)
                 	state.unwired = parseUnwiredSwitch()
                 if ( state.unwired != 0x00 && !state.numButtons )
                 	getNumButtons()
-                event = event + setTemp( dtMap.get(3) ) + ( dtMap.get(149) ? getWatts( dtMap.get(149) ) : [] )
+                events = events + setTemp( dtMap.get(3) ) + ( dtMap.get(149) ? getWatts( dtMap.get(149) ) : [] )
+                //{
+            	//	int x = Integer.parseInt('3fb851ea', 16)
+            	//	float y = Float.intBitsToFloat(x)
+                //	event = event + getWatts(y)
+            	//}
                 displayDebugLog("Number of Switches: ${state.numSwitches}")
                 def onoff = (dtMap.get(100) ? "on" : "off")
                 switch ( state.numSwitches )
@@ -411,7 +417,7 @@ private def parseCatchAllMessage(String description)
                             {	
                             	if ( child.device.currentValue('switch') == 'on' )
                                	{
-                                	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
+                                	events << response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
                         			state.flag = 'soft'
                            		}
                             }
@@ -440,7 +446,7 @@ private def parseCatchAllMessage(String description)
                             {	
                             	if ( child2.device.currentValue('switch') == 'on' )
                                	{
-                                	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
+                                	events << response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
                         			state.flag = 'soft'
                            		}
                             }
@@ -451,7 +457,7 @@ private def parseCatchAllMessage(String description)
                             {	
                             	if ( child3.device.currentValue('switch') == 'on' )
                                	{
-                                	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp3] ))
+                                	events << response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp3] ))
                         			state.flag = 'soft'
                            		}
                             }
@@ -470,7 +476,7 @@ private def parseCatchAllMessage(String description)
                 	displayDebugLog("DH synced with hardware - ${device.currentValue('switch')} - ${onoff}")
                     if ( (state.unwired & 0x01 ) != 0x00 && device.currentValue('switch') == 'on' )
                     {	
-                    	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp1] ))
+                    	events << response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp1] ))
                         state.flag = 'soft'
                     }
                 }
@@ -504,7 +510,8 @@ private def parseCatchAllMessage(String description)
                     state.flag = null
     		}
     }
-     return event
+    //displayDebugLog(events)
+    return events
 }
 
 private def setTemp(int temp)
@@ -531,14 +538,16 @@ private def getWatts(float pwr)
 {
 	def event = []
     pwr = pwr ? pwr : 0.0
-    if ( pwr != state.power )
+    if ( abs( pwr - (float)state.power ) > 1e-4 )
     {	
-    	state.power = pwr
-    	event << creatEvent(name: 'power', value: pwr)
+    	state.power = (float)pwr
+    	event << createEvent(name: 'power', value: pwr, unit: 'W')
     }
-    displayDebugLog("getPower: ${pwr} W")
+    displayDebugLog("Power: ${pwr} W")
 	return event
 }
+
+private def abs(x) { return ( x > 0 ? x : -x ) } 
 
 private def parseReportAttributeMessage(String description) 
 {
@@ -546,7 +555,7 @@ private def parseReportAttributeMessage(String description)
 		def nameAndValue = param.split(":")
 		map += [(nameAndValue[0].trim()):nameAndValue[1].trim()]
      }
-	 def event = null
+	 def events = []
     
     switch (descMap.cluster) 
     {
@@ -559,11 +568,11 @@ private def parseReportAttributeMessage(String description)
         	if ( descMap.value == "0000" )
             	state.batteryPresent = false
         	else if (descMap.attrId == "0020")
-				event = getBatteryResult(convertHexToInt(descMap.value / 2))
+				events = events + getBatteryResult(convertHexToInt(descMap.value / 2))
             break
  		case "0002": // temperature
         	if ( descMap.attrId == '0000' ) 
-            	event = setTemp( convertHexToInt(descMap.value) )
+            	events = events + setTemp( convertHexToInt(descMap.value) )
             break
  		case "0006":  //button press
         	parseSwitchOnOff(descMap)
@@ -573,7 +582,7 @@ private def parseReportAttributeMessage(String description)
             {
             	int x = Integer.parseInt(descMap.value, 16)
             	float y = Float.intBitsToFloat(x)
-            	event = getWatts(y)
+                events = events + getWatts(y)
             }
         	//displayDebugLog("Power: ${y} Watts")
         	break
@@ -588,7 +597,7 @@ private def parseReportAttributeMessage(String description)
  		default:
         	displayDebugLog( "unknown cluster in $descMap" )
     }
-	return event
+	return events
 }
 
 def parseSwitchOnOff(Map descMap)
@@ -726,9 +735,9 @@ def refresh()
     	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held', 'double'], isStateChange: true)
     sendEvent( name: 'checkInterval', value: 3000, data: [ protocol: 'zigbee', hubHardwareId: device.hub.hardwareID ] )
         
-    def cmds = zigbee.readAttribute(0x0002, 0) + 
-           		zigbee.readAttribute(0x0000, 0x0007) /*+
-                zigbee.readAttribute(0x0006,0,[destEndpoint: 0x01] ) +
+    def cmds =  zigbee.readAttribute(0x0002, 0) /*+ 
+           		zigbee.readAttribute(0x0000, 0x0007) + 
+                zigbee.readAttribute(0x0006,0,[destEndpoint: state.endp1] ) +
     			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x02] ) +
     			zigbee.readAttribute(0x0006,0,[destEndpoint: 0x03] ) */
     //if ( state.numButtons > 1 )
@@ -736,9 +745,10 @@ def refresh()
            
     //if ( state.batteryPresent )
     //	cmds += zigbee.readAttribute(0x0001, 0) //+ zigbee.readAttribute(0x0001,0x0001) + zigbee.readAttribute(0x0001,0x0002)
-                
-     cmds += zigbee.configureReporting(0x0000, 0, DataType.INT16, 1800, 3000, null) +
-     		 zigbee.configureReporting(0x0002, 0, DataType.INT16, 1800, 3000, 0x0001)
+     //cmds += zigbee.readAttribute(0x000C, 0x0055) + zigbee.readAttribute(0x0012, 0x0055)           
+    // cmds = //zigbee.configureReporting(0x0000, 0, DataType.INT16, 1800, 3000, null) //+
+     //		 zigbee.configureReporting(0x0002, 0, DataType.INT16, 1800, 3000, 0x0001)
+     //cmds = zigbee.command(0x0000, 0x000a, 0x0000,[mfgCode: 0x115f])
     
      displayDebugLog( cmds )
      //updated()
@@ -759,6 +769,18 @@ def configure()
 def updated()
 {
 	refresh()
+}
+
+def ping()
+{
+	displayDebugLog("Pinged")
+    zigbee.readAttribute(0x0002, 0)
+}
+
+def poll()
+{
+	displayDebugLog("Polled")
+    zigbee.readAttribute(0x0002, 0)
 }
 
 private getNumButtons()
@@ -876,7 +898,7 @@ private byte parseUnwiredSwitch()
 private Integer convertHexToInt(hex) 
 {
 	int result = Integer.parseInt(hex,16)
-    displayDebugLog("HextoInt: ${hex}  ${result}")
+    //displayDebugLog("HextoInt: ${hex}  ${result}")
     return result
 }
 
@@ -910,11 +932,13 @@ private Map dataMap(data)
                 break
               case DataType.UINT40:
             	long x = 0x000000000000000
-                x |= data.get(it+6) << 32
-                x |= data.get(it+5) << 24
-                x |= data.get(it+4) << 16
-                x |= data.get(it+3) << 8
-                x |= data.get(it+2)
+                for ( int i = 0; i < 5; i++ )
+                	x |= data.get(it+i+2) << 8*i
+                //x |= data.get(it+6) << 32
+                //x |= data.get(it+5) << 24
+                //x |= data.get(it+4) << 16
+                //x |= data.get(it+3) << 8
+                //x |= data.get(it+2)
             	resultMap.put(lbl, x )
                 it = it + 7
                 break  
