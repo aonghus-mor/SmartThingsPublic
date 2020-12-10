@@ -829,8 +829,17 @@ private getNumButtons()
             state.endp3b = 0xF6
             state.endpboth = 0x06
             break
-        case "lumi.ctrl_ln2.aq1": //QBKG12LM
-        case "lumi.switch.b2lacn02": //QBKG22LM
+        case "lumi.switch.b2lacn02": //QBKG22LM 
+        	state.numSwitches = 2
+        	state.numButtons = 5
+            state.endp1 = 0x02
+            state.endp2 = 0x03
+            state.endp3 = 0xF3
+            state.endp1b =0x2A
+            state.endp2b = 0x2B
+            state.endp3b = 0xF6
+            break
+        case "lumi.ctrl_ln2.aq1": //QBKG12LM      
         case "lumi.switch.b2nacn02": //QBKG24LM
            	state.numSwitches = 2
         	state.numButtons = 5
