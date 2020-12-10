@@ -91,22 +91,20 @@ def parse(String description)
     def dat = new Date()
     def newcheck = dat.time
     state.lastCheckTime = state.lastCheckTime == null ? 0 : state.lastCheckTime
-    //def diffcheck = newcheck - state.lastCheckTime
+    def diffcheck = newcheck - state.lastCheckTime
     //displayDebugLog(newcheck + " " + state.lastCheckTime + " " + diffcheck)
     state.lastCheckTime = newcheck
-    /*
+  
     if ( diffcheck > 2000 ) // if the state has not been resolved after 2 seconds, clear the flags
     {
-    	if ( state.flag == null && ( state.sw1 != null || state.sw2 != null || state.sw3 != null ) )
-        	state.flag = 'soft'
-        else
+    	//if ( state.flag == null && ( state.sw1 != null || state.sw2 != null || state.sw3 != null ) )
+        //	state.flag = 'soft'
+        //else
+        	state.flag = null
         	clearFlags()
+            displayDebugLog("Flags timed out")
     }
-    */
     
-        
-    //displayDebugLog( "(parse)flags: " + showFlags() )
-  
    	def events = []
    
    	if (description?.startsWith('catchall:')) 
@@ -120,11 +118,12 @@ def parse(String description)
     	events = parseFlags()
     else 
     	events = events + parseFlags()
-    
+        
     if ( events[0] != null && state.flag != 'held' )
     {
     	state.flag = null
         clearFlags()
+        displayDebugLog("Flags cleared")
     }
     
     def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) + "\n" + state.lastPressType
@@ -174,14 +173,14 @@ private def parseFlags()
             }
             else if ( state.sw2 != null )
             {
-                getChildDevices()[0].sendEvent(name: 'switch', value: state.sw2 )
+                getChild(2).sendEvent(name: 'switch', value: state.sw2 )
                 //if ( state.unwired == "Second" )
                 events << createEvent(name: 'button', value: 'held', data:[buttonNumber: 3], isStateChange: true)
                 displayInfoLog('Second switch held.')
             }
             else if ( state.sw3 != null )
             {
-                getChildDevices()[1].sendEvent(name: 'switch', value: state.sw3 )
+                getChild(3).sendEvent(name: 'switch', value: state.sw3 )
                 //if ( state.unwired == "Third" )
                 events << createEvent(name: 'button', value: 'held', data:[buttonNumber: 5], isStateChange: true)
                 displayInfoLog('Third switch held.')
@@ -206,7 +205,7 @@ private def parseFlags()
             	{
                 	if ( (state.unwired & 0x02) != 0x00 )
                 	{
-                		getChildDevices()[0].sendEvent(name: 'switch', value: 'off' )
+                		getChild(2).sendEvent(name: 'switch', value: 'off' )
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
                 	}
         		}
@@ -214,7 +213,7 @@ private def parseFlags()
             	{
                 	if ( (state.unwired & 0x04) != 0x00 )
              		{
-                		getChildDevices()[1].sendEvent(name: 'switch', value: 'off' )
+                		getChild(3).sendEvent(name: 'switch', value: 'off' )
                 		events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp3] ))
                 	}
        			}
@@ -245,10 +244,10 @@ private def parseFlags()
             	state.sw1 = null
                 //state.flag = 'soft'
             	if ( state.sw2 == 'off' )
-            		getChildDevices()[0].sendEvent(name: 'switch', value: 'off' )
+            		getChild(2).sendEvent(name: 'switch', value: 'off' )
             	else if (state.sw2 == 'on' )
             	{
-            		getChildDevices()[0].sendEvent(name: 'switch', value: 'on', isStateChange: true)
+            		getChild(2).sendEvent(name: 'switch', value: 'on', isStateChange: true)
                 	if ( (state.unwired & 0x02) != 0x00 )
                 	{
                     	events	<< response(["delay 1000"] + zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endp2] ))
@@ -287,17 +286,16 @@ private def parseFlags()
             }
          	else if ( state.sw2 != null )
             {
-            	displayDebugLog(getChildDevices())
                 if ( state.sw2 == 'off' )
             	{
-                	getChildDevices()[0].sendEvent(name: 'switch', value: 'off' )
+                    getChild(2).sendEvent(name: 'switch', value: 'off' )
                     if ( (state.unwired & 0x02) == 0x00 )
                     	buttondouble(3,4)
                     state.flag = null
                 }
             	else if (state.sw2 == 'on' )
             	{
-                    getChildDevices()[0].sendEvent(name: 'switch', value: 'on', isStateChange: true)
+                    getChild(2).sendEvent(name: 'switch', value: 'on', isStateChange: true)
                     events = events + buttondouble(3,4)
                     state.flag = null
                 	if ( (state.unwired & 0x02) != 0x00 )
@@ -312,14 +310,14 @@ private def parseFlags()
             {
             	if ( state.sw3 == 'off' )
             	{
-                	getChildDevices()[1].sendEvent(name: 'switch', value: 'off' )
+                	getChild(3).sendEvent(name: 'switch', value: 'off' )
                     if ( (state.unwired & 0x04) == 0x00 )
                     	events = events + buttondouble(5,6)
                     state.flag = null
                 }
             	else if (state.sw3 == 'on' )
             	{
-            		getChildDevices()[1].sendEvent(name: 'switch', value: 'on', isStateChange: true)
+            		getChild(3).sendEvent(name: 'switch', value: 'on', isStateChange: true)
                     events = events + buttondouble(5,6)
                     state.flag = null
                 	if ( (state.unwired & 0x04) != 0x00 )
@@ -402,7 +400,7 @@ private def parseCatchAllMessage(String description)
                         break
                     case 2:
                     	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
-                        def child = getChildDevices()[0]
+                        def child = getChild(2)
                     	displayInfoLog( "Unwired Switch Code: ${state.unwired}" )
                 		displayInfoLog( "Hardware Switches are (" + onoff + "," + onoff2 +")" )
                         displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child.device.currentValue('switch') + ')' )
@@ -429,9 +427,9 @@ private def parseCatchAllMessage(String description)
                         break
                     case 3:
                     	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
-                        def child2 = getChildDevices()[0]
+                        def child2 = getChild(2)
                         def onoff3 = (dtMap.get(102) ? 'on' : 'off' )
-                        def child3 = getChildDevices()[1]
+                        def child3 = getChild(3)
                     	displayInfoLog( "Unwired Switch Code: ${state.unwired}" )
                 		displayInfoLog( "Hardware Switches are (${onoff}, ${onoff2}, ${onoff3})" )
                         displayInfoLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child2.device.currentValue('switch') + ',' + child3.device.currentValue('switch')+ ')' )
@@ -441,7 +439,7 @@ private def parseCatchAllMessage(String description)
                         	//Try to stop child device(s) from going offline
                            	displayDebugLog("Child 2 DH synced with hardware - ${child2.device.currentValue('switch')} - ${onoff2}")
                             if ( (state.unwired & 0x02 ) == 0x00 )
-                          		child.sendEvent(name: 'switch', value: onoff2 )
+                          		child2.sendEvent(name: 'switch', value: onoff2 )
                             else
                             {	
                             	if ( child2.device.currentValue('switch') == 'on' )
@@ -644,6 +642,18 @@ private def parseCustomMessage(String description)
 	}
 }
 
+private def getChild(int i)
+{
+    def children = getChildDevices()
+    for (child in children)
+    {	
+        if ( child.deviceNetworkId[-1].toInteger() == i )
+            return child
+    }
+    displayDebugLog("Child Device ${i} unrecognised.")
+    return null
+}
+
 def childOn(String dni) 
 {
 	def endp = [null,state.endp1, state.endp2, state.endp3]
@@ -719,7 +729,6 @@ def refresh()
     			{
                 	for ( int i = 2; i <= state.numSwitches; i++ )
     					addChildDevice("Smartthings", "Child Switch Health", "${device.deviceNetworkId}-${i}", null,[label: "${device.displayName}-(${i})"])
-
                 }
 			} 
         	catch(Exception e) 
@@ -728,8 +737,7 @@ def refresh()
         	}
 			displayInfoLog("Child created")
 		}    
-        //sendEvent(name: "switch2", value: getChildDevices()[0])
-        getChildDevices()[0].sendEvent(name: 'checkInterval', value: '3000')
+        getChild(2).sendEvent(name: 'checkInterval', value: '3000')
     }                    
     if ( state.unwired != 0x00 )
     	sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held', 'double'], isStateChange: true)
@@ -936,32 +944,24 @@ private Map dataMap(data)
                 it = it + 4
                 break
             case DataType.UINT32:
-            	resultMap.put(lbl, (long)(0x0000000000000000 | (((((data.get(it+5) << 8) | data.get(it+4)) << 8 ) | data.get(it+3)) << 8 ) | data.get(it+2)))
+            	long x = 0x0000000000000000
+                for ( int i = 0; i < 4; i++ )
+              		x |= data.get(it+i+2) << 8*i
+            	resultMap.put(lbl, x )
                 it = it + 6
                 break
               case DataType.UINT40:
             	long x = 0x000000000000000
                 for ( int i = 0; i < 5; i++ )
-                	x |= data.get(it+i+2) << 8*i
-                //x |= data.get(it+6) << 32
-                //x |= data.get(it+5) << 24
-                //x |= data.get(it+4) << 16
-                //x |= data.get(it+3) << 8
-                //x |= data.get(it+2)
+              		x |= data.get(it+i+2) << 8*i
             	resultMap.put(lbl, x )
                 it = it + 7
                 break  
             case DataType.UINT64:
             	long x = 0x0000000000000000
-                x |= data.get(it+9) << 56
-                x |= data.get(it+8) << 48
-                x |= data.get(it+7) << 40
-                x |= data.get(it+6) << 32
-                x |= data.get(it+5) << 24
-                x |= data.get(it+4) << 16
-                x |= data.get(it+3) << 8
-                x |= data.get(it+2)
-                resultMap.put(lbl, x )
+                for ( int i = 0; i < 8; i++ )
+                	x |= data.get(it+i+2) << 8*i
+            	resultMap.put(lbl, x )
                 it = it + 10
                 break 
             case DataType.INT8:
@@ -973,7 +973,9 @@ private Map dataMap(data)
                 it = it + 4
                 break
             case DataType.FLOAT4:
-                int x = (0x00000000 | (((((data.get(it+5) << 8) | data.get(it+4)) << 8 ) | data.get(it+3)) << 8 ) | data.get(it+2))
+                int x = 0x00000000 
+                for ( int i = 0; i < 4; i++ ) 
+                	x |= data.get(it+i+2) << 8*i
                 float y = Float.intBitsToFloat(x) 
             	resultMap.put(lbl,y)
                 it = it + 6
