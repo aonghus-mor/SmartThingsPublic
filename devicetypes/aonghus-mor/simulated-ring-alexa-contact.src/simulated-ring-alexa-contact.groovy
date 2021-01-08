@@ -14,12 +14,13 @@
 metadata 
 {
     definition (name: "Simulated Ring Alexa Contact", namespace: "aonghus-mor", author: "aonghus-mor",
-    			vid: "generic-contact-4") 
+    			vid: "generic-contact-4", ocfDeviceType: 'x.com.st.d.sensor.contact') 
     {
-        capability "Switch"
+        capability "Contact Sensor"	
         capability "Sensor"
+        capability "Switch"
         capability "Actuator"
-        capability "Contact Sensor"	    		
+            		
     }
 }
 

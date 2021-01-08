@@ -5,11 +5,10 @@ metadata
 {
 	definition (name: "srt323-thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
                 mnmn: "SmartThings", vid: "generic-radiator-thermostat-2", ocfDeviceType: "oic.d.thermostat") 
-                //minHubCoreVersion: '000.017.0012', executeCommandsLocally: false) 
     {
     	capability "Actuator"
 		capability "Temperature Measurement"
-        //capability "Thermostat"
+        capability "Thermostat"
 		capability "Thermostat Heating Setpoint"
         capability "Thermostat Mode"
         capability "Thermostat Operating State"
@@ -17,16 +16,8 @@ metadata
 		capability "Polling"
 		capability "Sensor"
         capability "Health Check"
-        capability "Battery" // added by Aonghus Mor
-        
-		//command "switchMode"
-        command "quickSetHeat"
-		command "setTemperature"
-		command "setTempUp"
-		command "setTempDown"
-        //command "setAwayMode"
-        
-		//command "setupDevice" 
+        capability "Battery" 
+        capability "Refresh"
         		
 		// fingerprint deviceId: "0x0800", inClusters: "0x25, 0x31, 0x40, 0x43, 0x70, 0x72, 0x80, 0x84, 0x85, 0x86, 0xef"
 		fingerprint deviceId: "0x0800" 
@@ -38,66 +29,7 @@ metadata
 	simulator 
     {
 	}
-	/*
-	tiles (scale: 2)
-    {
-        multiAttributeTile(name:"mainTile", type: "thermostat", width: 6, height: 4, canChangeIcon: true)
-        {
-            tileAttribute ("device.temperature", key: "PRIMARY_CONTROL") 
-            {
-                attributeState("temperature", unit:"dC", label:'${currentValue}°', defaultState: true)
-            }
-            
-            tileAttribute("device.heatingSetpoint", key: "VALUE_CONTROL") 
-            {
-                attributeState("VALUE_UP", action: "setTempUp")
-                attributeState("VALUE_DOWN", action: "setTempDown")
-            }
-            
-            tileAttribute("device.thermostatOperatingState", key: "OPERATING_STATE") 
-            {
-                attributeState("idle", backgroundColor:"#44b621")
-                attributeState("heating", backgroundColor:"#ffa81e")
-            }
-            
-            tileAttribute("device.thermostatMode", key: "THERMOSTAT_MODE") 
-            {
-                attributeState("off", label:'${name}')
-                attributeState("heat", label:'${name}')
-            }
-            
-  			tileAttribute("device.heatingSetpoint", key: "HEATING_SETPOINT") 
-            {
-    			attributeState("heatingSetpoint", label:'${currentValue}°', unit:"dC", defaultState: true)
-			}
-        }  
-
-        valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat", width: 2, height: 2) 
-        {
-            tileAttribute ("device.battery", key: "PRIMARY_CONTROL")
-            {
-                state "battery", label:'${currentValue}% battery', unit:""
-            }
-        }
-        
-        standardTile("refresh", "device.thermostatMode", inactiveLabel: false, decoration: "flat", width: 2, height: 2)
-        {
-			state "default", action:"polling.poll", icon:"st.secondary.refresh"
-		}
-        
-		standardTile("configure", "device.configure", inactiveLabel: false, decoration: "flat", width: 2, height: 2) 
-        {
-			state "configure", label:'', action:"configuration.configure", icon:"st.secondary.configure"
-		}
-        //valueTile("awayMode", "device.awayMode", inactiveLabel: false, decoration: "flat", width: 2, height: 2) 
-        //{
-		//	state "awayMode", label:'Away ${currentValue}', unit:"", action:"setAwayMode"
-		//}
-	}
-
-	main "mainTile"
-    details(["mainTile", "battery", "refresh", "configure"]) //, "awayMode"])
-	*/
+	
     
     preferences
     {
@@ -115,14 +47,6 @@ metadata
             input "T102", "number", title: "Away Temperature (102):", defaultValue: 15, required: false, displayDuringSetup: false
             input "T103", "number", title: "Frost Protection Temperature (103):", defaultValue: 5, required: false, displayDuringSetup: false
         }
-        //if ( state.productId == 0x0004 )
-		//{
-        //	section
-        //	{
-        //	// This is the "Device Network Id" displayed in the IDE
-       	//	 	input "userAssociatedDevice", "string", title:"Associated z-wave switch network Id...", description:"Associated switch ZWave network Id (hex)", required: false, displayDuringSetup: false
- 		//	}
-         //}
      }
  }
 
@@ -210,6 +134,8 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 	state.size = cmd.size
 	state.scale = cmd.scale
 	state.precision = cmd.precision
+    def dat = new Date()
+    state.lastReport = dat.time
 	createEvent(map)
 }
 
@@ -220,6 +146,8 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelR
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.name = "temperature"
     log.debug "Temperature: ${map.value} ${map.unit}"
+    def dat = new Date()
+    state.lastReport = dat.time
 	createEvent(map)
 }
 
@@ -252,21 +180,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 		cmds << zwave.wakeUpV2.wakeUpNoMoreInformation().format()
         
         log.debug "Wakeup $cmds"
-/*
-		cmds.each 
-        { zwaveCmd ->
-                def hubCmd = []
-                hubCmd << response(zwaveCmd)
-
-//               log.debug "HubCmds $hubCmd"
-
-                sendHubCommand(hubCmd, 1000)
-
-//                log.debug "Sent hubcommand"
-        };
-        [event]      
-*/        
-        //[event, response(delayBetween(cmds, 1000))]
+       
         events << response(delayBetween(cmds, 1000))
         events
 }
@@ -288,6 +202,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd)
     }
     // Store time of last battery update so we don't ask every wakeup, see WakeUpNotification handler
     state.lastbatt = new Date().time
+    state.lastReport = state.lastbatt
     createEvent(map)
 }
 
@@ -307,6 +222,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeRepor
 	}
 	map.name = "thermostatMode"
     log.debug "Mode: ${map.value}"
+    state.lastReport = new Date().time
 	createEvent(map)
 }
 
@@ -330,6 +246,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.Thermosta
     map.descriptionText = "Operating state: ${map.value}"
     map.isStateChange = true
     log.debug "Operating State: ${map.value}"
+    state.lastReport = new Date().time
 	createEvent(map)
 }
 
@@ -348,6 +265,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSuppo
     	log.warn "Heat capability NOT confirmed.  Something wrong?"
         return false
     }
+    state.lastReport = new Date().time
 }
 
 //def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSupportedReport cmd)
@@ -361,6 +279,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalCapabilitiesR
 	map.value = cmd.defaultWakeUpIntervalSeconds
 	map.displayed = false
 	state.defaultWakeUpInterval = cmd.defaultWakeUpIntervalSeconds
+    state.lastReport = new Date().time
     createEvent(map)
 }
 
@@ -370,22 +289,15 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd)
     def map = [ name: "reportedWakeUpInterval", unit: "seconds" ]
 	map.value = cmd.seconds
 	map.displayed = false
+    state.lastReport = new Date().time
     createEvent(map)
 }
-
-//def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) 
-//{
-//    def map = [:]
-//    map.value = cmd.value == 0x00 ? 'on' : 'off' 
-//    map.name = "awayMode"
-//    log.debug "Away Mode: ${map.value} ${cmd:value}"
-//    createEvent(map)
-//}
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv1.ManufacturerSpecificReport cmd)
 {
 	state.productId = cmd.productId
     log.debug "Manufacturers Product ID: ${state.productID}"
+    state.lastReport = new Date().time
     return true
 }
 
@@ -409,6 +321,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
       default:
       	log.debug "Please check the parameter number"
    }
+   state.lastReport = new Date().time
    return true
 }
 
@@ -418,18 +331,15 @@ def zwaveEvent(physicalgraph.zwave.Command cmd)
     def cmds = []
     sendRefresh(cmds)
     delayBetween(cmds,1000)
-/*
-	delayBetween([
-		zwave.sensorMultilevelV1.sensorMultilevelGet().format(), // current temperature
-		zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: 1).format(),
-		zwave.thermostatModeV1.thermostatModeGet().format(),
-		//zwave.thermostatFanModeV3.thermostatFanModeGet().format(),
-		zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
-	], 1000)
-*/
 }
 
 // Command Implementations
+
+def refresh()
+{
+	log.debug "refresh"
+	state.refreshNeeded = true
+}
 
 def configure() 
 {
@@ -438,128 +348,64 @@ def configure()
     def cmds = []
     sendConfig(cmds)
     delayBetween(cmds,1000)
-/*
-	short dT = deltaT ? (10 * deltaT) : 0x0A
-    //state.deltaTemperature = [dT]
-    // Normally this won't do anything as the thermostat is asleep, 
-    // but do this in case it helps with the initial config
-	delayBetween([
-		zwave.thermostatModeV1.thermostatModeSupportedGet().format(),
-		zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:[zwaveHubNodeId]).format(),
-        // Set hub to get battery reports / warnings
-        zwave.associationV1.associationSet(groupingIdentifier:3, nodeId:[zwaveHubNodeId]).format(),
-        // Set hub to get set point reports
-        zwave.associationV1.associationSet(groupingIdentifier:4, nodeId:[zwaveHubNodeId]).format(),
-        // Set hub to get multi-level sensor reports (defaults to temperature changes of > 1C)
-        zwave.associationV1.associationSet(groupingIdentifier:5, nodeId:[zwaveHubNodeId]).format(),
-        // set the temperature sensor On
-		zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format(),
-        // set delta temperature for reporting, i.e. when to report a T change.
-        zwave.configurationV1.configurationSet(configurationValue: [dT], parameterNumber: 3, size: 1).format()
-	], 1000)
-*/
 }
 
 def poll() 
 {
-	log.debug "poll"
-	state.refreshNeeded = true
-	// Normally this won't do anything as the thermostat is asleep, 
-    // but do this in case it helps with the initial config
-	//def cmds = []
-    //sendRefresh(cmds)
-    //delayBetween(cmds,1000)
+	def newtime = new Date().time
+    log.debug "poll"
+	state.refreshNeeded = state.refreshNeeeded || !state.lastReport || ( newtime - state.lastReport > 2000 * state.wakeUpInterval )
+	state.lastReport = newtime
+    //refresh()
 }
-
-def refresh()
-{
-	log.debug "refresh"
-
-	state.refreshNeeded = true
-    
-    // Normally this won't do anything as the thermostat is asleep, 
-    // but do this in case it helps with the initial config
-    //def cmds = []
-    //sendRefresh(cmds)
-    //delayBetween(cmds,1000)
-	//delayBetween([
-	//	zwave.sensorMultilevelV1.sensorMultilevelGet().format(), // current temperature
-	//	zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format(),
-	//	zwave.thermostatModeV1.thermostatModeGet().format(),
-	//	zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
-	//], 1000)
-}
-
-/*
-def quickSetHeat(degrees) 
-{
-	setHeatingSetpoint(degrees)
-	log.debug("Degrees at quicksetheat: $degrees")
-}
-
-def setTempUp() 
-{ 
-    def newtemp = device.currentValue("heatingSetpoint").toInteger() + 1
-    log.debug "Setting temp up: $newtemp"
-    quickSetHeat(newtemp)
-}
-
-def setTempDown() 
-{ 
-    def newtemp = device.currentValue("heatingSetpoint").toInteger() - 1
-    log.debug "Setting temp down: $newtemp"
-    quickSetHeat(newtemp)
-}
-
-def setTemperature(temp)
-{
-	log.debug "setTemperature $temp"
-    quickSetHeat(temp)
-}
-*/
 
 def setHeatingSetpoint(degrees) 
 {
-    log.debug "Heating setpoint to be set to: ${degrees}."
-    // special codes, 100-103, are converted as below
-    
-    // Don't let the setpoint go below the frost protection temperature
-    degrees = degrees < state.Tfrost ? Tfrost : degrees
-    if ( degrees > 99 ) 
+    if ( degrees == state.setpoint )
     {
-    	int degs = degrees.toInteger()
-        switch ( degs )
-        {
-        	case 100: 
-            	degrees = state.previousSetpoint  // resets to the previous temperature setpoint 
-                break
-            case 101: 
-            	degrees = state.Thigh  // sets to the temperature corresponding to code 101 in the preferences section of the DH
-                break
-            case 102:
-            	degrees = state.Tlow  // ditto
-                break
-            case 103:
-            	degrees = state.Tfrost // ditto
-                break
-            default:
-            	log.debug "Invalid setpoint: $degrees" // invalid special code. setpoint abandoned 
-                return
-        }
+    	log.debug "Unchanged setpoint, ${degrees}, ignored."
     }
-   
-    sendEvent(name: 'heatingSetpoint', value: degrees, unit: (state.scale == 1 ? 'F' : 'C'), displayed: true, isStateChange: true)
+    else
+    {
+        log.debug "Heating setpoint to be set to: ${degrees}."
+        // special codes, 100-103, are converted as below
 
-	//def deviceScale = state.scale ?: 1
-	//def deviceScaleString = deviceScale == 1 ? "F" : "C"
-    //def locationScale = getTemperatureScale()
-    def p = (state.precision == null) ? 1 : state.precision
-	state.p = p
-	log.trace "setHeatingSetpoint scale: ${state.scale} precision: $p setpoint: ${degrees}"    
-    state.previousSetpoint = state.setpoint
-    state.setpoint = degrees 
-    state.updateNeeded = true
-    // thermostatMode
+        // Don't let the setpoint go below the frost protection temperature
+        degrees = degrees < state.Tfrost ? Tfrost : degrees
+        if ( degrees > 99 ) 
+        {
+            int degs = degrees.toInteger()
+            switch ( degs )
+            {
+                case 100: 
+                    degrees = state.previousSetpoint  // resets to the previous temperature setpoint 
+                    break
+                case 101: 
+                    degrees = state.Thigh  // sets to the temperature corresponding to code 101 in the preferences section of the DH
+                    break
+                case 102:
+                    degrees = state.Tlow  // ditto
+                    break
+                case 103:
+                    degrees = state.Tfrost // ditto
+                    break
+                default:
+                    log.debug "Invalid setpoint: $degrees" // invalid special code. setpoint abandoned 
+                    return
+            }
+        }
+
+		def CorF = (state.scale == 1 ? 'F' : 'C')
+        def p = (state.precision == null) ? 1 : state.precision
+        def dgs = p > 0 ? degrees.toDouble() : degrees.toInteger()
+        state.p = p
+        sendEvent(name: 'heatingSetpoint', value: dgs, unit: CorF, displayed: true, isStateChange: true)
+        log.trace "setHeatingSetpoint scale: ${CorF} precision: ${p} setpoint: ${dgs}"    
+        state.previousSetpoint = state.setpoint
+        state.setpoint = degrees 
+        state.updateNeeded = true
+        // thermostatMode
+	}
 }
 
 private getStandardDelay() 
@@ -571,7 +417,7 @@ def updateIfNeeded()
 {
 	def cmds = []
     
-    //log.debug "updateIfNeeded"
+    //log.debug "updateIfNeeded ${state.updateNeeded} ${state.refreshNeeded} ${state.configNeeded}"
     //cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format() // current temperature
     //cmds << "delay 500"
    
@@ -591,7 +437,8 @@ def updateIfNeeded()
         														scale: state.scale, 
                                                                 precision: state.p, 
                                                                 scaledValue: setpoint).format()
-        cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
+        if ( !state.refreshNeeded )
+        	cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
 	
         state.updateNeeded = false
     }
@@ -599,9 +446,6 @@ def updateIfNeeded()
     if (state.refreshNeeded)
     {
         log.debug "Refresh"
-        //sendEvent(name:"SRT321", value: "Refresh")
-		//cmds << zwave.basicV1.basicSet(value: (state.awayMode ? 0x00 : 0xFF)).format() 
-        //cmds << zwave.basicV1.basicGet().format()
         sendRefresh(cmds)
        	state.refreshNeeded = false
     }
@@ -609,7 +453,6 @@ def updateIfNeeded()
     if (state.configNeeded)
     {
         log.debug "Config"
-		//sendEvent(name:"SRT321", value: "Config")
         sendConfig(cmds)
         state.configNeeded = false
     }
@@ -619,8 +462,8 @@ def updateIfNeeded()
 
 private sendConfig(cmds)
 {
-    def setpointRange = [4,105]
-    sendEvent(name: "heatingSetpointRange", value: setpointRange, displayed: false, isStateChange: true)
+    //def setpointRange = [4,105]
+    //sendEvent(name: "heatingSetpointRange", value: setpointRange, displayed: false, isStateChange: true)
     // Nodes controlled by Thermostat Mode Set - not sure this is needed?
     cmds << zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:[zwaveHubNodeId]).format()
 
@@ -655,15 +498,6 @@ private sendConfig(cmds)
     }
     cmds << zwave.configurationV1.configurationSet(configurationValue: [dT], parameterNumber: 3, size: 1).format()
 
-    //log.debug "association $state.association user: $userAssociatedDevice"
-    //int nodeID = getAssociatedId(state.association)
-    // If user has changed the switch association, send the new assocation to the device 
-    //if (nodeID != -1)
-    //{
-    //    log.debug "Setting associated device $nodeID"
-    //    cmds << zwave.associationV1.associationSet(groupingIdentifier: 2, nodeId: nodeID).format()
-    //}
-
     def userWake = getUserWakeUp(userWakeUpInterval)
     // If user has changed userWakeUpInterval, send the new interval to the device 
     if (state.wakeUpInterval != userWake)
@@ -679,12 +513,11 @@ private sendConfig(cmds)
 
 private sendRefresh(cmds)
 {
-	cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
+	cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format()
+    cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
 		//
-	cmds << zwave.thermostatModeV1.thermostatModeGet().format()
+	//cmds << zwave.thermostatModeV1.thermostatModeGet().format()
 	cmds << zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
-    cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x02).format()
-    cmds << zwave.configurationV1.configurationGet(parameterNumber: 0x03).format()
 }
 
 private getUserWakeUp(userWake) 
@@ -704,57 +537,3 @@ private getUserWakeUp(userWake)
     }  
     return userWake.toInteger()
 }
-
-
-
-// Get the Z-Wave Id of the binary switch the user wants the thermostat to control
-// -1 if no association set
-//int getAssociatedId(association)
-//{
-//	int associatedState = -1
-//	int associatedUser = -1
-//    log.debug "getAssociatedId $association"
-//	if (association != null && association != "")
-//    {
-//    	associatedState = association.toInteger()
-//        log.debug "State $association $associatedState"
-//    }
-//    if (userAssociatedDevice != null && userAssociatedDevice != "")
-//    {
-//    	try
-//        {
-//       		associatedUser = Integer.parseInt(userAssociatedDevice, 16)
-//        }
-//        catch (Exception e)
-//        {
-//        }
-//        log.debug "userDev $userAssociatedDevice $associatedUser"
-//    }
-    
-    // Use the app associated switch id if it exists, otherwise the device preference  
-//    return associatedState != -1 ? associatedState : associatedUser
-//}
-
-// Called from the SRT321 App with the Z-Wave switch network ID
-// How long before SmartThings realises that having device preferences 
-// with input "*" "capability.switch" is reasonable????
-//void setupDevice(value)
-//{
-//	state.association = "$value"
-//    int val = Integer.parseInt(value)
-//    String hex = Integer.toHexString(val)
-//    log.debug "Setting associated device Id $value Hex $hex"
-//    settings.userAssociatedDevice = hex
-//    state.configNeeded = true
-//}
-
-//def setAwayMode()
-//{
-//	def map = [name: "awayMode"]
-//    //map.name = "awayMode"
-//    state.awayMode = state.awayMode ? false : true
-//    state.refreshNeeded = true
-//   	map.value = state.awayMode ? 'on' : 'off'
-//    log.debug "Away Mode: ${state.awayMode}"
-//    createEvent(map)
-//}
