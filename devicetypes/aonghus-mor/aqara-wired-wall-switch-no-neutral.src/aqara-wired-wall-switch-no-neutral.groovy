@@ -793,7 +793,7 @@ def poll()
 
 private getNumButtons()
 {
-	String model = device.getDataValue("model")
+    String model = device.getDataValue("model")
     switch ( model ) 
     {
     	case "lumi.ctrl_neutral1": //QBKG04LM
@@ -807,7 +807,6 @@ private getNumButtons()
             state.endp3b = 0xF6
             break
         case "lumi.ctrl_ln1.aq1": //QBKG11LM
-        case "lumi.switch.b1lacn02": //QBKG21LM
         	state.numSwitches = 1
      		state.numButtons = 2
             state.endp1 = 0x01
@@ -816,7 +815,17 @@ private getNumButtons()
             state.endp1b = 0x04
             state.endp2b = 0xF5
             state.endp3b = 0xF6
-        case "lumi.switch.b1nacn02": //QBKG23LM
+		case "lumi.switch.b1lacn02": //QBKG21LM
+        	state.numSwitches = 1
+     		state.numButtons = 2
+            state.endp1 = 0x02
+            state.endp2 = 0xF2
+            state.endp3 = 0xF3
+            state.endp1b = 0x2A
+            state.endp2b = 0xF5
+            state.endp3b = 0xF6
+            break
+		case "lumi.switch.b1nacn02": //QBKG23LM
             state.numSwitches = 1
      		state.numButtons = 2
             state.endp1 = 0x01
