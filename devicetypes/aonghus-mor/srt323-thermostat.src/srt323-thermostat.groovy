@@ -4,7 +4,7 @@
 metadata 
 {
 	definition (name: "srt323-thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
-                mnmn: "SmartThings", vid: "generic-radiator-thermostat-2", ocfDeviceType: "oic.d.thermostat") 
+                mnmn: "SmartThings", vid: "generic-radiator-thermostat", ocfDeviceType: "oic.d.thermostat") 
     {
     	capability "Actuator"
 		capability "Temperature Measurement"
@@ -96,7 +96,7 @@ def ping()
 	log.debug "ping"
     state.refreshNeeded = true
 }
-
+/*
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet cmd)
 {
 	log.debug "ModeSet: $cmd"
@@ -111,6 +111,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet c
 	map.name = "thermostatMode"
 	createEvent(map)
 }
+*/
 
 // Event Generation
 def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointReport cmd)
@@ -215,6 +216,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeRepor
 	}
 	map.name = "thermostatMode"
     log.debug "Mode: ${map.value}"
+    state.mode = map.value
     state.lastReport = new Date().time
 	createEvent(map)
 }
@@ -248,16 +250,23 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.Thermosta
 // trivial check that 'heat' is supported.
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSupportedReport cmd)
 {
-	if ( cmd.heat == true )
+	log.debug "Modes Supported: ${cmd}"
+    /*
+    if ( cmd.heat == true )
     {
     	log.info "Heat capability confirmed."
         return true
+    }
+    else if ( cmd.off == true )
+    {
+    	log.info "Off mode capability confirmed"
     }
     else
     {
     	log.warn "Heat capability NOT confirmed.  Something wrong?"
         return false
     }
+    */
     state.lastReport = new Date().time
 }
 
@@ -433,15 +442,22 @@ def updateIfNeeded()
         if ( !state.refreshNeeded )
         	cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
    		state.updateNeeded = false
+        //heat()
    }
  	
     if ( state.modeUpdateNeeded )
     {
     	//def mymode = physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet.(state.mode == 'heat' ? MODE_HEAT : MODE_OFF)
         if ( state.mode == 'heat' )
+        {
         	cmds << zwave.thermostatModeV1.thermostatModeSet(mode: physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet.MODE_HEAT).format()
+            log.debug "Mode heat transferred"
+        }
         else
+        {
         	cmds << zwave.thermostatModeV1.thermostatModeSet(mode: physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet.MODE_OFF).format()
+            log.debug "Mode off transferred"
+        }
     	cmds << zwave.thermostatModeV1.thermostatModeGet().format()
         state.modeUpdateNeeded = false
     }
@@ -543,21 +559,25 @@ private getUserWakeUp(userWake)
 
 def heat()
 {
+    log.debug "heat()"
     setThermostatMode('heat')
 }
 
 def off()
 {
-	setThermostatMode('off')
+	log.debug "off()"
+    setThermostatMode('off')
 }
 
 def setThermostatMode(mode)
 {
-	if ( state.mode == mode )
+	log.debug "setThermostatMode ${mode} ${state.mode}"
+    if ( state.mode == mode )
     	state.modeUpdateNeeded = false
     else
     {
     	state.mode = mode
     	state.modeUpdateNeeded = true
     }
+    sendEvent(name: 'thermostatMode', value: state.mode, displayed: true)
 }
