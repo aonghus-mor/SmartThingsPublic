@@ -124,6 +124,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 	map.displayed = true
     map.isStateChange = true
     map.name = "heatingSetpoint"
+    //map.constraints = [min:5,max:35]
     log.debug "SetPointReport: ${map.value} ${map.unit}"
     //log.debug cmd
 	// So we can respond with same format
@@ -327,6 +328,16 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
    return true
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd)
+{
+	log.debug "${cmd}"
+    Map map = [:]
+    map.value = (cmd.value == 0xFF ) ? 'heat' : 'off'
+    map.name = 'thermostatMode'
+    map.displayed = true
+    return createEvent(map) 
+}
+
 def zwaveEvent(physicalgraph.zwave.Command cmd) 
 {
 	log.warn "Unexpected zwave command $cmd"
@@ -363,6 +374,7 @@ def poll()
 
 def setHeatingSetpoint(degrees) 
 {
+    log.debug "Old setpoint: ${device.currentValue('heatingSetpoint')}"
     if ( degrees == state.setpoint )
     {
     	log.debug "Unchanged setpoint, ${degrees}, ignored."
@@ -429,7 +441,17 @@ def updateIfNeeded()
     	log.debug "Getting battery state"
     	cmds << zwave.batteryV1.batteryGet().format()
     }
-        
+ 	
+    if ( state.modeUpdateNeeded )
+    {
+    	//cmds << zwave.thermostatModeV1.thermostatModeGet().format()
+        boolean heatmode = ( state.mode == 'heat' )
+        cmds << zwave.basicV1.basicSet(value: heatmode ? 0xFF : 0x00 ).format()
+        cmds << zwave.basicV1.basicGet().format()
+        state.updateNeeded = heatmode
+        state.modeUpdateNeeded = false
+    }
+    
     if (state.updateNeeded)
     {
         log.debug "Updating setpoint $state.setpoint"
@@ -442,26 +464,7 @@ def updateIfNeeded()
         if ( !state.refreshNeeded )
         	cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
    		state.updateNeeded = false
-        //heat()
    }
- 	
-    if ( state.modeUpdateNeeded )
-    {
-    	//def mymode = physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet.(state.mode == 'heat' ? MODE_HEAT : MODE_OFF)
-        if ( state.mode == 'heat' )
-        {
-        	cmds << zwave.thermostatModeV1.thermostatModeSet(mode: physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet.MODE_HEAT).format()
-            log.debug "Mode heat transferred"
-        }
-        else
-        {
-        	cmds << zwave.thermostatModeV1.thermostatModeSet(mode: physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet.MODE_OFF).format()
-            log.debug "Mode off transferred"
-        }
-    	cmds << zwave.thermostatModeV1.thermostatModeGet().format()
-        state.modeUpdateNeeded = false
-    }
-    
     if (state.refreshNeeded)
     {
         log.debug "Refresh"
@@ -571,7 +574,7 @@ def off()
 
 def setThermostatMode(mode)
 {
-	log.debug "setThermostatMode ${mode} ${state.mode}"
+	log.debug "setThermostatMode to ${mode} from ${state.mode}"
     if ( state.mode == mode )
     	state.modeUpdateNeeded = false
     else
