@@ -3,22 +3,21 @@ After the device has connected to the hub click the wheel symbol (top right) to 
 1) The name of the device and an icon which will appear in the middle of the main screen.
 2) The wakeup interval.  This should be at least 600 seconds.  The device saves battery power by waking up every so often to collect and execute any commands which have been set in the meantime.   A smaller value uses more battery power, but a larger value implies a long delay between something changing in the device handler, such as the temperature setpoint, and the device responding.
 3) The minomum change of temperature to be reported back to the device handler.   Again a small value implies more frequent reporting and thus more battery usage.
-4) The remaining 3 parameters are only required in scenario B below.
 
-The device may be used in conjunction with @meavydev's scheduler (https://github.com/meavydev/SmartThingsPublic/tree/master/smartapps/meavydev), designed for the SRT321, or any other scheduler.  It can also be set from within various SmartThings routines, such as "GoodBye" and "I'm Back"   In each case a temperature (an integer value) setpoint is chosen.   The term 'setpoint' is used for the temperature which the thermostat is set to achieve.  THe term 'temperature' is used for the measured temperature.
+The device may be used in conjunction with @meavydev's scheduler (https://github.com/meavydev/SmartThingsPublic/tree/master/smartapps/meavydev), designed for the SRT321, or any other scheduler.  
+It can also be set from within various SmartThings routines, such as "GoodBye" and "I'm Back"   
+In each case a temperature (an integer value) setpoint is chosen.   The term 'setpoint' is used for the temperature which the thermostat is set to achieve.  
+THe term 'temperature' is used for the measured temperature.
 
 Note that the temperature scale, Celsius or Fahrenheit, is set for the location in the smartthings app.
 
-There are 2 usage scenarios envisaged:
-Scenario A:
-In this case the setpoints are integer values for the expected temperature.   They can be set in the DH itself or by an external scheduler or other smartapp or routine, including WebCoRE.
+The dashboard tile contains a button (top left) which can be used to toggle the thermostat mode between 'heat' and 'off'.
 
-Scenario B:
-In this case the 3 temperature values at the bottom of the preferences page are used for the "Home temperature", "Away temperature" or "Frost protection temperature".  
-If the DH receives a setpoint > 99 it assumes the number received is a code rather than a temperature.  Thee codes are:
-100) Resets the temperature to its previous value.  For example, you leave the house, the temperature is reduced, but you want it to return to the previous temperature setting when you return, irrespective of what the value of that temperature is.
-101) Sets the setpoint temperature to the "Home temperature" defined in the preferences. (default 21C)
-102) ditto but the "Away temperature" (default 15C)
-103) ditto but the "Frost Protection temperature" (default 5C)
+When the mode is set to 'off' it is equivalent to setting the temperature setpoint to 5 celsius.  This is to protect the system from freezing.
 
-The advantage of scenario B lies in the fact that users typically find that they have to code the same temperature into multiple point in the scheduler or in multiple routines.   By coding the codes 100..103 instead the device handler automatically uses the value set in the DH preferences.  If it is required to change this then it need only be changed in one place.  
+The Device handler itself shows 5 tiles:
+1) the current temperature 
+2) the temperature setpoint.  This can be adjusted up and down by one degree.
+3) the thermostat mode.  'heat' for normal operation. 'off' for frost protection.
+4) the operating state.  This has the value 'heating' or 'idle', whether the boiler is firing or not.
+5) the battery state.
