@@ -4,17 +4,23 @@
 metadata 
 {
 	definition (name: "srt323-thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
-                mnmn: "SmartThings", vid: "generic-radiator-thermostat", ocfDeviceType: "oic.d.thermostat") 
+                mnmn: "SmartThingsCommunity", vid : "9e927142-45f3-3a99-8041-7355237b9301",
+                //mnmn: "SmartThings", vid: "generic-radiator-thermostat", 
+                ocfDeviceType: "oic.d.thermostat" 
+                //ocfDeviceType: "oic.d.switch"
+                ) 
     {
-    	capability "Actuator"
+    	//capability "Actuator"
 		capability "Temperature Measurement"
-        capability "Thermostat"
-		capability "Thermostat Heating Setpoint"
+        //capability "Thermostat"
+		//capability "perfectsmoke34787.thermostatHeatingSetpoint"
+        capability "Thermostat Heating Setpoint"
         capability "Thermostat Mode"
+        capability "Switch"
         capability "Thermostat Operating State"
 		capability "Configuration"
 		capability "Polling"
-		capability "Sensor"
+		//capability "Sensor"
         capability "Health Check"
         capability "Battery" 
         capability "Refresh"
@@ -41,12 +47,14 @@ metadata
         {
         	input "deltaT", "decimal", title: "Temperature reporting step.", description: "Report Temperature when it changes by this step (0.1 - 10.0 C ).", defaultValue: 1.0, range: "0.1..10.0", required: false, displayDuringSetup: false
         }
+        /*
         section
         {
         	input "T101", "number", title: "Home Temperature (101):", defaultValue: 21, required: false, displayDuringSetup: false
             input "T102", "number", title: "Away Temperature (102):", defaultValue: 15, required: false, displayDuringSetup: false
             input "T103", "number", title: "Frost Protection Temperature (103):", defaultValue: 5, required: false, displayDuringSetup: false
         }
+        */
      }
  }
 
@@ -112,7 +120,6 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSet c
 	createEvent(map)
 }
 */
-
 // Event Generation
 def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointReport cmd)
 {
@@ -123,8 +130,9 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.displayed = true
     map.isStateChange = true
+    //map.name = "perfectsmoke34787.heatingSetpoint"
     map.name = "heatingSetpoint"
-    //map.constraints = [min:5,max:35]
+    //map.data = [constraints: [min:5,max:35]]
     log.debug "SetPointReport: ${map.value} ${map.unit}"
     //log.debug cmd
 	// So we can respond with same format
@@ -138,12 +146,16 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv1.SensorMultilevelReport cmd)
 {
     def map = [:]
+    //def events = []
 	map.value = cmd.scaledSensorValue.toString()
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.name = "temperature"
     log.debug "Temperature: ${map.value} ${map.unit}"
     state.lastReport = (new Date()).time
-	createEvent(map)
+	//events << 
+    createEvent(map)
+    //events << createEvent(name: 'State', value: "{map.value}{map.unit} {state.mode}")
+    //events
 }
 
 // Battery powered devices can be configured to periodically wake up and
@@ -251,7 +263,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev2.Thermosta
 // trivial check that 'heat' is supported.
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev1.ThermostatModeSupportedReport cmd)
 {
-	log.debug "Modes Supported: ${cmd}"
+	log.debug "${cmd}"
     /*
     if ( cmd.heat == true )
     {
@@ -375,6 +387,8 @@ def poll()
 def setHeatingSetpoint(degrees) 
 {
     log.debug "Old setpoint: ${device.currentValue('heatingSetpoint')}"
+    //log.debug "Modes: ${device.currentValue('heatingSetpoint.constraints')}"
+    //sendEvent(name: 'supportedThermostatModes', value: ['off', 'heat', 'previous', 'warm', 'cool'])
     if ( degrees == state.setpoint )
     {
     	log.debug "Unchanged setpoint, ${degrees}, ignored."
@@ -385,6 +399,7 @@ def setHeatingSetpoint(degrees)
         // special codes, 100-103, are converted as below
 
         // Don't let the setpoint go below the frost protection temperature
+        /*
         degrees = degrees < state.Tfrost ? Tfrost : degrees
         if ( degrees > 99 ) 
         {
@@ -408,11 +423,12 @@ def setHeatingSetpoint(degrees)
                     return
             }
         }
-
+		*/
 		def CorF = (state.scale == 1 ? 'F' : 'C')
         def p = (state.precision == null) ? 1 : state.precision
         def dgs = p > 0 ? degrees.toDouble() : degrees.toInteger()
         state.p = p
+        //sendEvent(name: 'perfectsmoke34787.heatingSetpoint', value: dgs, unit: CorF, displayed: true, isStateChange: true)
         sendEvent(name: 'heatingSetpoint', value: dgs, unit: CorF, displayed: true, isStateChange: true)
         log.trace "setHeatingSetpoint scale: ${CorF} precision: ${p} setpoint: ${dgs}"    
         state.previousSetpoint = state.setpoint
@@ -535,10 +551,11 @@ private sendConfig(cmds)
 
 private sendRefresh(cmds)
 {
-	cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format()
-    cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
-		//
-	//cmds << zwave.thermostatModeV1.thermostatModeGet().format()
+	sendEvent(name: 'supportedThermostatModes', value: ['off', 'heat'])
+    cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format()
+    cmds << zwave.thermostatModeV1.thermostatModeGet().format()
+    if ( state.mode != 'off' )
+    	cmds << zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1).format()
 	cmds << zwave.thermostatOperatingStateV1.thermostatOperatingStateGet().format()
 }
 
@@ -560,16 +577,21 @@ private getUserWakeUp(userWake)
     return userWake.toInteger()
 }
 
-def heat()
+def on()
 {
-    log.debug "heat()"
+    log.debug "on()"
     setThermostatMode('heat')
+    //sendEvent(name: 'switch', value: 'on', displayed: false )
+    return []
 }
 
 def off()
 {
 	log.debug "off()"
+    //def mode = state.mode == 'off' ? 'heat' : 'off' 
     setThermostatMode('off')
+    //sendEvent(name: 'switch', value: 'off', displayed: false )
+    return []
 }
 
 def setThermostatMode(mode)
@@ -583,4 +605,5 @@ def setThermostatMode(mode)
     	state.modeUpdateNeeded = true
     }
     sendEvent(name: 'thermostatMode', value: state.mode, displayed: true)
+    sendEvent(name: 'switch', value: ( state.mode == 'heat' ? 'on' : 'off' ), displayed: false )
 }

@@ -14,7 +14,9 @@
 metadata 
 {
     definition (name: "Simulated Ring Alexa Contact", namespace: "aonghus-mor", author: "aonghus-mor",
-    			vid: "generic-contact-4", ocfDeviceType: 'x.com.st.d.sensor.contact') 
+    			//vid: "generic-contact-4", 
+                mnmn: "SmartThingsCommunity", vid: "d1dbdf77-6edc-378e-bc65-7f7ce16a34f2",
+                ocfDeviceType: 'x.com.st.d.sensor.contact') 
     {
         capability "Contact Sensor"	
         capability "Sensor"
