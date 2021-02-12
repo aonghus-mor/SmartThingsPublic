@@ -4,13 +4,14 @@
 metadata 
 {
 	definition (name: "srt323-thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
-                mnmn: "SmartThingsCommunity", vid : "9e927142-45f3-3a99-8041-7355237b9301",
+                mnmn: "SmartThingsCommunity", // vid : "9e927142-45f3-3a99-8041-7355237b9301",
+                vid: "8a71c9c9-1703-3bbf-932a-00d0a8282fd5",
                 //mnmn: "SmartThings", vid: "generic-radiator-thermostat", 
                 ocfDeviceType: "oic.d.thermostat" 
                 //ocfDeviceType: "oic.d.switch"
                 ) 
     {
-    	//capability "Actuator"
+    	capability "Actuator"
 		capability "Temperature Measurement"
         //capability "Thermostat"
 		//capability "perfectsmoke34787.thermostatHeatingSetpoint"
@@ -20,7 +21,7 @@ metadata
         capability "Thermostat Operating State"
 		capability "Configuration"
 		capability "Polling"
-		//capability "Sensor"
+		capability "Sensor"
         capability "Health Check"
         capability "Battery" 
         capability "Refresh"
@@ -47,14 +48,12 @@ metadata
         {
         	input "deltaT", "decimal", title: "Temperature reporting step.", description: "Report Temperature when it changes by this step (0.1 - 10.0 C ).", defaultValue: 1.0, range: "0.1..10.0", required: false, displayDuringSetup: false
         }
-        /*
         section
         {
-        	input "T101", "number", title: "Home Temperature (101):", defaultValue: 21, required: false, displayDuringSetup: false
-            input "T102", "number", title: "Away Temperature (102):", defaultValue: 15, required: false, displayDuringSetup: false
-            input "T103", "number", title: "Frost Protection Temperature (103):", defaultValue: 5, required: false, displayDuringSetup: false
+        	input "Thome", "number", title: "Home Temperature:", defaultValue: 21, required: false, displayDuringSetup: false
+            input "Taway", "number", title: "Away Temperature:", defaultValue: 15, required: false, displayDuringSetup: false
+            //input "T103", "number", title: "Frost Protection Temperature (103):", defaultValue: 5, required: false, displayDuringSetup: false
         }
-        */
      }
  }
 
@@ -461,7 +460,7 @@ def updateIfNeeded()
     if ( state.modeUpdateNeeded )
     {
     	//cmds << zwave.thermostatModeV1.thermostatModeGet().format()
-        boolean heatmode = ( state.mode == 'heat' )
+        boolean heatmode = ( state.mode != 'off' )
         cmds << zwave.basicV1.basicSet(value: heatmode ? 0xFF : 0x00 ).format()
         cmds << zwave.basicV1.basicGet().format()
         state.updateNeeded = heatmode
@@ -516,9 +515,12 @@ private sendConfig(cmds)
 
     // set the configuration parameters
     // log.debug userWakeUpInterval + " " + deltaT + " " + T101 + " " + T102 + " " + T103
-    state.Thigh  = T101 ? T101 : 21
-    state.Tlow   = T102 ? T102 : 15
-    state.Tfrost = T103 ? T103 : 05
+    sendEvent(name: 'supportedThermostatModes', value: ['off', 'heat', 'home', 'away', 'resume'])
+    
+    log.debug settings
+    state.Thigh  = Thome ? Thome : 21
+    state.Tlow   = Taway ? Taway : 15
+    state.Tfrost = Tfrost ? Tfrost : 05
     // set the temperature sensor On
     cmds << zwave.configurationV1.configurationSet(configurationValue: [0xff], parameterNumber: 1, size: 1).format()
     // set the temperature scale, "C" or "F"
@@ -551,7 +553,7 @@ private sendConfig(cmds)
 
 private sendRefresh(cmds)
 {
-	sendEvent(name: 'supportedThermostatModes', value: ['off', 'heat'])
+	
     cmds << zwave.sensorMultilevelV1.sensorMultilevelGet().format()
     cmds << zwave.thermostatModeV1.thermostatModeGet().format()
     if ( state.mode != 'off' )
@@ -601,9 +603,24 @@ def setThermostatMode(mode)
     	state.modeUpdateNeeded = false
     else
     {
-    	state.mode = mode
+   		state.mode = (mode == 'off') ? 'off' : 'heat' 
     	state.modeUpdateNeeded = true
+        switch ( mode )
+        {	
+        	case 'off':
+            case 'heat':
+                break
+            case  'home':
+            	setHeatingSetpoint(state.Thigh)
+                break
+            case 'away':
+            	setHeatingSetpoint(state.Tlow)
+                break
+            case 'resume':
+            	setHeatingSetpoint(state.previousSetpoint)
+                break
+        }
     }
     sendEvent(name: 'thermostatMode', value: state.mode, displayed: true)
-    sendEvent(name: 'switch', value: ( state.mode == 'heat' ? 'on' : 'off' ), displayed: false )
+    sendEvent(name: 'switch', value: ( state.mode == 'off' ? 'off' : 'on' ), displayed: false )
 }
