@@ -1,0 +1,27 @@
+This is a smartthings device handler for the Xiaomi Aqara wired wall switch with no neutral connection. 
+This version has been rewritten to work better with the new Smartthings App.
+This version should work with the single switch versions, QBKG04LM and QBKG21LM, and the 2 switch vwersiona, QBKG03LM and GBKG22LM.
+It is based on work by @simic and @wastedabuser. 
+In the 2 switch version, only one of the 2 switches is required to be connected to the live + switched wire.  
+The other may be used as a soft switch.
+The device will also give the temperature (in integer degrees).
+The device responds to simple presses of the switch, to double presses and to press and hold.  
+
+This version generates a child switch to represent the second switch.  Virtual Device Sync is no longer required.
+
+When a switch is unwired the DH in the app will normally show 'Off', but will turn to 'On' for a short time after it is pressed before returning to 'Off'.
+i.e. it behaves as a button.
+
+Each switch action will generate a virtual button action as well as the hardware action, switching the wired switch off or on.
+These be used in conjunction with (e.g.) Smart Lighting or ABC (Advanced Button Controller) to trigger other actions.
+1) Single push left switch: button 1 pushed
+2) Push and hold left switch: button 1 held
+3) Double push left switch: button 2 pushed.
+4) For the right switch buttons 1 & 2 become buttons 3 & 4.
+5) Both switches pushed: button 5 pushed 
+
+In the case of an unwired switch I recommed using these buttons to toggle the state of the (e.g.) lamp, rather than the switch, as the trigger in Smart Lighting.
+This helps to avoid the situation where the switch and the lamp get out of sync with each other.  Pressing the switch will always change the state of the lamp, whether it os off or on.
+
+I have included a preference for initialising this to 'None', 'First', or 'Second'.  
+The single switch version should leave this set to 'None'.   
