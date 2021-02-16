@@ -5,7 +5,8 @@ metadata
 {
 	definition (name: "srt323-thermostat", namespace: "aonghus-mor", author: "Aonghus Mor",
                 mnmn: "SmartThingsCommunity", // vid : "9e927142-45f3-3a99-8041-7355237b9301",
-                vid: "8a71c9c9-1703-3bbf-932a-00d0a8282fd5",
+                vid: "c3fe91aa-3af3-3f5d-acea-346d4859bce0",
+                //vid: "8a71c9c9-1703-3bbf-932a-00d0a8282fd5",
                 //mnmn: "SmartThings", vid: "generic-radiator-thermostat", 
                 ocfDeviceType: "oic.d.thermostat" 
                 //ocfDeviceType: "oic.d.switch"
