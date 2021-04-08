@@ -75,7 +75,9 @@ metadata
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM" 
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
-                manufacturer: "LUMI", model: "lumi.switch.n3acn3", deviceJoinName: "Aqara Switch QBKG26LM"   
+                manufacturer: "LUMI", model: "lumi.switch.n3acn3", deviceJoinName: "Aqara Switch QBKG26LM"  
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
+                manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01"   
      }
 	
     preferences 
@@ -675,6 +677,11 @@ private getNumButtons()
             state.numSwitches = 3
             state.numButtons = 4
             state.endpoints = [0x01,0x02,0x03,0x29,0x02A,0x2B,0xF6]
+            break
+        case "lumi.switch.b1laus01": //Lumi WS-USC01
+            state.numSwitches = 1
+            state.numButtons = 1
+            state.endpoints = [0x01,0xFF,0xFE,0xF2,0xFD,0xFC,0xFB]
             break
         default:
         	displayDebugLog("Unknown device model: " + model)
