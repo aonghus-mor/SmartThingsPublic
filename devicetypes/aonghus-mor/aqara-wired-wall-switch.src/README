@@ -1,6 +1,6 @@
 This is a smartthings device handler for the Xiaomi Aqara wired wall switch both  with and without neutral connection. 
 This version is an extensive revision of the previous version with some new features.
-See at the bottom for the specific changes.
+See at the bottom for the specific changes, including decoupled mode.
 In particular it now has its own child DH rather than using the smartthings provided child switch DH.  I re3commend updating this before updating the main DH.
 It is based on work by @simic and @wastedabuser. 
 In the 2 or 3 switch versions, only one of the switches is required to be connected to the live + switched wire.  
@@ -30,3 +30,9 @@ Changes from the previous version:
 3) For unwired switches the on/off state of the hardware is ingnored, it will always behave as a button.  
 The formware has a setting to make this happen.  I have not used this as it makes it impossible to register double presses or held.
 4) When the DH is open in the phone the button presses, etc, will appear on the screen for a moment.
+
+The newest version (17 March 2021) implements decoupled mode. In decoupled mode the button press and the actual electrical switch behave as if they are decoupled. 
+Hence pressing the button sends a message to the hub that it has been pressed, but has no effect on the actual switch. The lamp doesn’t come on.
+In this version there is an extra preference which is True or False for Decoupled or Coupled mode respectively. When set to false the behavuour should be as before.
+In the DH presentation On/Off affects the electrical switch, whereas Momentary is like pressing the button.
+Note that double press and hold are not guaranteed to work in decoupled mode.
