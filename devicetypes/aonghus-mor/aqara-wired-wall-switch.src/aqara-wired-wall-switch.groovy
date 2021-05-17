@@ -29,7 +29,8 @@ metadata
 {
     definition (name: "Aqara Wired Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
                 mnmn: "SmartThingsCommunity", 
-                vid: "822341f9-0eac-3dc8-b02a-fbdc64fd9541", 
+                //vid: "822341f9-0eac-3dc8-b02a-fbdc64fd9541",   
+                vid: "2697954d-03ab-3157-9d1e-439050a62f41",
                 //vid: "c24838eb-ca6e-355f-a3c1-ce9b829365dc",
     			//mnmn: "LUMI", vid: "generic-switch", 
                 ocfDeviceType: "oic.d.switch")
@@ -44,10 +45,12 @@ metadata
         capability "Temperature Measurement"
         capability "Health Check"
         capability "Power Meter"
+        capability "Energy Meter"
         capability "Polling"
         
         command "childOn"
         command "childOff"
+        command "childToggle"
         command "childRefresh"
         
         attribute "lastCheckin", "string"
@@ -76,13 +79,14 @@ metadata
                 manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM" 
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.n3acn3", deviceJoinName: "Aqara Switch QBKG26LM"  
-        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
-                manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01"   
+        //fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
+        //        manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01"  
      }
 	
     preferences 
     {	
         input name: "unwired", type: "bool", title: "Is this switch unwired?", required: true, displayDuringSetup: true
+        input name: "decoupled", type: "bool", title: "Decoupled Mode?", required: false, displayDuringSetup: false
         input name: "tempOffset", type: "decimal", title:"Temperature Offset", 
         							description:"Adjust temperature by this many degrees", range:"*..*", required: false, displayDuringSetup: false                         
         input name: "infoLogging", type: "bool", title: "Display info log messages?", required: false, displayDuringSetup: false
@@ -118,12 +122,7 @@ def parse(String description)
     displayDebugLog( "Parse returned: $events" )
     return events
 }
-/*
-private def showFlags()
-{
-	return state.flag + " " + state.sw1 + " " + state.sw2 + " " + state.sw3 + " " + state.lastCheckTime
-}
-*/
+
 def updateTemp()
 {
 	// every half hour get the temperature
@@ -147,51 +146,65 @@ private def parseCatchAllMessage(String description)
     switch ( cluster.clusterId ) 
     {
     	case 0x0000: 
-         	if ( cluster.command == 0x0a && cluster.data[0] == 0x01 )
+         	if ( cluster.command == 0x0a )
             {
-        		Map dtMap = dataMap(cluster.data)
-                displayDebugLog( "Map: " + dtMap )
-                if ( ! state.numButtons )
-                	getNumButtons()
-                events = events + setTemp( dtMap.get(3) ) + ( dtMap.get(149) ? getWatts( dtMap.get(149) ) : [] )
-                
-                displayDebugLog("Number of Switches: ${state.numSwitches}")
-                def onoff = (dtMap.get(100) ? "on" : "off")
-                switch ( state.numSwitches )
+            	if (cluster.data[0] == 0x01 )
                 {
-                	case 1:
-                    	displayInfoLog( "Hardware Switch is ${onoff}" )
-                        displayDebugLog( 'Software Switch is ' + device.currentValue('switch') )
-                        break
-                    case 2:
-                    	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
-                        //def child = getChild(2)
-                    	def child = getChildDevices()[0]
-                        displayDebugLog( "Unwired Switches: ${state.unwiredSwitches}" )
-                		displayDebugLog( "Hardware Switches are (" + onoff + "," + onoff2 +")" )
-                        displayDebugLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child.device.currentValue('switch') + ')' )
-                    	
-                        break
-                    case 3:
-                    	def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
-                        def child2 = getChild(0)
-                        def onoff3 = (dtMap.get(102) ? 'on' : 'off' )
-                        def child3 = getChild(1)
-                    	displayDebugLog( "Unwired Switches: ${state.unwiredSwitches}" )
-                		displayDebugLog( "Hardware Switches are (${onoff}, ${onoff2}, ${onoff3})" )
-                        displayDebugLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child2.device.currentValue('switch') + ',' + child3.device.currentValue('switch')+ ')' )
-                    	
-                        break
-                    	
-                    default:
-                    	displayDebugLog("Number of switches unrecognised: ${state.numSwitches}")
+                    Map dtMap = dataMap(cluster.data)
+                    displayDebugLog( "Map: " + dtMap )
+                    if ( ! state.numButtons )
+                        getNumButtons()
+                    events = events + setTemp( dtMap.get(3) ) +
+                                    ( dtMap.get(152) != null ? getWatts( dtMap.get(152) ) : [] ) + 
+                                    ( dtMap.get(149) != null ? getkWh( dtMap.get(149) ) : [] )
+
+                    displayDebugLog("Number of Switches: ${state.numSwitches}")
+                    def onoff = (dtMap.get(100) ? "on" : "off")
+                    switch ( state.numSwitches )
+                    {
+                        case 1:
+                            displayInfoLog( "Hardware Switch is ${onoff}" )
+                            displayDebugLog( 'Software Switch is ' + device.currentValue('switch') )
+                            break
+                        case 2:
+                            def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
+                            //def child = getChild(2)
+                            def child = getChildDevices()[0]
+                            displayDebugLog( "Unwired Switches: ${state.unwiredSwitches}" )
+                            displayDebugLog( "Decoupled Switches: ${state.decoupled}" )
+                            displayDebugLog( "Hardware Switches are (" + onoff + "," + onoff2 +")" )
+                            displayDebugLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child.device.currentValue('switch') + ')' )
+
+                            break
+                        case 3:
+                            def onoff2 = (dtMap.get(101) ? 'on' : 'off' )
+                            def child2 = getChild(0)
+                            def onoff3 = (dtMap.get(102) ? 'on' : 'off' )
+                            def child3 = getChild(1)
+                            displayDebugLog( "Unwired Switches: ${state.unwiredSwitches}" )
+                            displayDebugLog( "Decoupled Switches: ${state.decoupled}" )
+                            displayDebugLog( "Hardware Switches are (${onoff}, ${onoff2}, ${onoff3})" )
+                            displayDebugLog( 'Software Switches are (' + device.currentValue('switch') + ',' + child2.device.currentValue('switch') + ',' + child3.device.currentValue('switch')+ ')' )
+
+                            break
+
+                        default:
+                            displayDebugLog("Number of switches unrecognised: ${state.numSwitches}")
+                    }
                 }
-            }
-            else 
-            {
-        		//Map dtMap = dataMap(cluster.data)
-                //displayDebugLog( "Map: " + dtMap )
-                displayDebugLog('CatchAll ignored.')
+            	else if ( cluster.data[0] == 0xf0 )
+                {
+                	state.holdDone = false
+                    Map dtMap = dataMap(cluster.data)
+                    displayDebugLog( "Map: " + dtMap )
+    				runIn( 1, doHoldButton )
+                }
+                else
+            	{
+                    //Map dtMap = dataMap(cluster.data)
+                    //displayDebugLog( "Map: " + dtMap )
+                    displayDebugLog('CatchAll ignored.')
+            	}
             }
         	break
         case 0x0006: 	
@@ -222,12 +235,30 @@ private def getWatts(float pwr)
 {
 	def event = []
     pwr = pwr ? pwr : 0.0
+    state.power = state.power ? state.power : 0.0
     if ( abs( pwr - (float)state.power ) > 1e-4 )
     {	
     	state.power = (float)pwr
     	event << createEvent(name: 'power', value: pwr, unit: 'W')
     }
-    displayDebugLog("Power: ${pwr} W")
+    displayDebugLog("Instantaneous Power: ${pwr} W")
+	return event
+}
+
+private def getkWh(float enrgy)
+{
+	def event = []
+    enrgy = enrgy ? enrgy : 0.0
+    state.energy = state.energy ? state.energy : 0.0
+    if ( abs( enrgy - (float)state.energy ) > 1e-4 )
+    {	
+    	state.energy = (float)enrgy
+        if ( state.energy < 1.0 )
+			event << createEvent(name: 'energy', value: (enrgy * 1000), unit: 'Wh')
+        else
+        	event << createEvent(name: 'energy', value: enrgy, unit: 'kWh')
+    }
+    displayDebugLog("Accumulated Energy: ${enrgy} kWh")
 	return event
 }
 
@@ -259,21 +290,20 @@ private def parseReportAttributeMessage(String description)
             	events = events + setTemp( convertHexToInt(descMap.value) )
             break
  		case "0006":  //button press
+        	state.flag = ( descMap.value[1] == 'c' ) ? 'double' : 'hard' 
         	events = events + parseSwitchOnOff(descMap)
             break
         case "000C": //analog input
-        	if ( descMap.attrID == "0055" )
+        	if ( descMap.attrId == "0055" )
             {
             	int x = Integer.parseInt(descMap.value, 16)
             	float y = Float.intBitsToFloat(x)
                 events = events + getWatts(y)
             }
-        	//displayDebugLog("Power: ${y} Watts")
         	break
         case "0012": //Multistate Input
-        	state.flag = 'hard'
-            //parsePressed(descMap)
-   			displayDebugLog("Cluster 0x0012 seen for hard press.")
+            state.flag = ( descMap.value[-1] == '2' ) ? 'double' : 'hard' 
+            events = events + parseSwitchOnOff(descMap)
             break
  		//case "0008":
         //	if ( descMap.attrId == "0000")
@@ -287,9 +317,7 @@ private def parseReportAttributeMessage(String description)
 
 def parseSwitchOnOff(Map descMap)
 {
-	//parse messages on read attr cluster 0x0006
-	
-    state.flag = ( descMap.value[1] == 'c' ) ? 'double' : 'hard' 
+	//parse messages on read attr cluster 0x0006 or 0x0012
     def events = []
     int endp = descMap.endpoint.toInteger()
     int endpcode = state.endpoints.indexOf(endp)
@@ -353,7 +381,7 @@ private def parseCustomMessage(String description)
 
 def doHoldButton()
 {
-	displayDebugLog("doHoldButton   Hold Done: ${state.holdDone}")
+	displayDebugLog("doHoldButton   Hold Done: ${state.holdDone}   Last EndPcode: ${state.lastEndpcode}")
     if ( !state.holdDone )  // avoid this function being called twice.
    	{
         state.holdDone = true
@@ -363,19 +391,22 @@ def doHoldButton()
             switch( state.lastEndpcode )
             {
                 case 0:
-                //events << createEvent( button )
-                sendEvent(button)
-                displayDebugLog(button)
+                case 3:
+                    //events << createEvent( button )
+                    sendEvent(button)
+                    displayDebugLog(button)
                 break
-                case 1:
-                case 2:
-                getChild(state.lastEndpcode-1).sendEvent( button )
-                displayDebugLog("Child ${state.lastEndpcode}  ${button}")
+                case 1..2:
+                case 4..5:
+                	int ch = state.lastEndpcode % 3 - 1
+                    getChild(ch).sendEvent( button )
+                    displayDebugLog("Child ${state.lastEndpcode}  ${button}")
                 break
                 default:
                     displayDebugLog("Unexpected custom message")
             }
         }
+        state.lastEndpcode = null
     }
 }
 
@@ -404,7 +435,7 @@ def childOn(String dni)
 {
     int idx = state.childDevices.indexOf(dni) + 1
     int endp = state.endpoints[idx]
-    def cmd = state.unwiredSwitches[idx] ? [] : zigbee.command(0x0006, 0x01, "", [destEndpoint: endp] )
+    def cmd = zigbee.command(0x0006, 0x01, "", [destEndpoint: endp] )
     displayDebugLog("ChildOn ${dni}  ${idx}  ${cmd}" )
     cmd 
 }
@@ -413,8 +444,17 @@ def childOff(String dni)
 {
  	int idx = state.childDevices.indexOf(dni) + 1
     int endp = state.endpoints[idx]
-    def cmd = state.unwiredSwitches[idx] ? [] : zigbee.command(0x0006, 0x00, "", [destEndpoint: endp] )
+    def cmd = zigbee.command(0x0006, 0x00, "", [destEndpoint: endp] )
     displayDebugLog( "ChildOff ${dni}  ${idx}  ${cmd}")
+    cmd 
+}
+
+def childToggle(String dni) 
+{
+ 	int idx = state.childDevices.indexOf(dni) + 1
+    int endp = state.endpoints[idx]
+    def cmd = zigbee.command(0x0006, 0x02, "", [destEndpoint: endp] )
+    displayDebugLog( "ChildToggle ${dni}  ${idx}  ${cmd}")
     cmd 
 }
 
@@ -438,13 +478,18 @@ private def childFromNetworkId(String dni)
 	return child
 }
 
-def childRefresh(String dni, Boolean unw) 
+def childRefresh(String dni, Map sets) 
 {
     displayInfoLog("Child Refresh: ${dni}")
     def child = childFromNetworkId(dni)
-    def idx = state.childDevices.indexOf(dni)
-    state.unwiredSwitches[idx] = unw   
-    displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}")
+    def idx = state.childDevices.indexOf(dni) + 1
+    if ( state.unwiredSwitches == null )
+    	state.unwiredSwitches = []
+    state.unwiredSwitches[idx] = sets.unwired
+    if ( state.decoupled == null )
+    	state.decoupled = []
+    state.decoupled[idx] = sets.decoupled
+    displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}   ${state.decoupled}")
 	refresh()
 }
 
@@ -478,15 +523,28 @@ def off()
     cmd
 }
 
+def push()
+{	
+	displayDebugLog("Momentary pressed")
+	Map button = [name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true]
+    sendEvent( button ) 
+    displayDebugLog(button)
+    def cmd = state.decoupled[0] ? [] : zigbee.command(0x0006, 0x02, "", [destEndpoint: state.endpoints[0]] )
+    displayDebugLog( cmd )
+    cmd
+}
+
 private def clearState()
 {
 	displayDebugLog(state)
     def unwiredSwitches = state.unwiredSwitches
+    def decoupled = state.decoupled
     def tempNow = state.tempNow
     def tempNow2 = state.tempNow2
     state = null
     state.unwiredSwitches = unwiredSwitches
-    state.tempNow = tempNow
+	state.decoupled = decoupled
+	state.tempNow = tempNow
     state.tempNow2 = tempNow2
     displayDebugLog(state)
 }
@@ -505,12 +563,17 @@ def refresh()
     state.tempOffset = tempOffset == null ? 0 : tempOffset
     
     //state.final = 'off'
-    displayDebugLog(state.unwiredSwitches)
+    
     if ( state.unwiredSwitches == null )
-        state.unwiredSwitches = [unwired]
-    else
-        state.unwiredSwitches[0] = unwired
-        
+        state.unwiredSwitches = []
+    state.unwiredSwitches[0] = unwired
+    displayDebugLog("Unwired: ${state.unwiredSwitches}")
+    
+    if ( state.decoupled == null )
+    	state.decoupled = []
+    state.decoupled[0] = decoupled
+    displayDebugLog("Decoupled: ${state.decoupled}")
+    
     getNumButtons()
     if ( state.numSwitches > 1 )
     {
@@ -589,20 +652,32 @@ def refresh()
     
     //state.unwiredSwitches = [unwired]
     def cmds = 	zigbee.readAttribute(0x0001, 0) + 
-    			zigbee.readAttribute(0x0002, 0)
-    /*
-   
-        	cmds += zigbee.writeAttribute(0x0000, 0xFF22, DataType.UINT8, (state.unwired & 0x01) != 0x00 ? 0xFE : 0x12, [mfgCode: "0x115F"]) +
-                		//zigbee.writeAttribute(0x0000, 0xFF22, DataType.UINT8,   true ? 0xFE : 0x12, [mfgCode: "0x115F"]) +
-                		zigbee.writeAttribute(0x0000, 0xFF23, DataType.UINT8, (state.unwired & 0x02) != 0x00 ? 0xFE : 0x22, [mfgCode: "0x115F"]) +
-                		["delay 1000"] + zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"]) + zigbee.readAttribute(0x0000, 0xFF23, [mfgCode: "0x115F"])
-                        break
-     */  
+    			zigbee.readAttribute(0x0002, 0) +
+                setDecoupled() +
+                showDecoupled()
+     
 	displayDebugLog("State: ${state}")
      displayDebugLog( cmds )
      //updated()
      state.flag = null
      cmds
+}
+
+private def setDecoupled()
+{
+	displayDebugLog("Decoupled: ${state.decoupled}   ${decoupled}" )
+    def cmds = zigbee.writeAttribute(0x0000, 0xFF22, DataType.UINT8, state.decoupled[0] ? 0xFE : 0x12, [mfgCode: "0x115F"]) 
+    for ( byte i = 1; i < state.decoupled.size(); i++ )
+    	cmds += zigbee.writeAttribute(0x0000, 0xFF22 +i, DataType.UINT8, state.decoupled[i] ? 0xFE : 0x12 + i * 0x10, [mfgCode: "0x115F"])
+    return cmds
+}
+
+private def showDecoupled()
+{
+	def cmds = zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"]) 
+    for ( byte i = 1; i < state.decoupled.size(); i++ )
+    	cmds += zigbee.readAttribute(0x0000, 0xFF22 +i, [mfgCode: "0x115F"])
+    return cmds
 }
 
 def installed()
@@ -644,17 +719,17 @@ private getNumButtons()
         case "lumi.switch.b1lacn02": //QBKG21LM
         	state.numSwitches = 1
      		state.numButtons = 1
-            state.endpoints = [0x02,0xF2,0xF3,0x04,0xF4,0xF5,0xF6]
+            state.endpoints = [0x02,null,null,0x04,null,null,null]
             break
         case "lumi.ctrl_ln1.aq1": //QBKG11LM
         	state.numSwitches = 1
      		state.numButtons = 1
-            state.endpoints = [0x01,0xF2,0xF3,0x04,0xF4,0xF5,0xF6]
+            state.endpoints = [0x01,null,null,0x04,null,null,null]
 			break
 		case "lumi.switch.b1nacn02": //QBKG23LM
             state.numSwitches = 1
      		state.numButtons = 1
-            state.endpoints = [0x01,0xF2,0xF3,0x05,0xF4,0xF5,0xF6]
+            state.endpoints = [0x01,null,null,0x05,null,null,null]
             break
         case "lumi.ctrl_neutral2": //QBKG03LM
         	state.numSwitches = 2
@@ -678,11 +753,11 @@ private getNumButtons()
             state.numButtons = 4
             state.endpoints = [0x01,0x02,0x03,0x29,0x02A,0x2B,0xF6]
             break
-        case "lumi.switch.b1laus01": //Lumi WS-USC01
-            state.numSwitches = 1
-            state.numButtons = 1
-            state.endpoints = [0x01,0xFF,0xFE,0xF2,0xFD,0xFC,0xFB]
-            break
+        //case "lumi.switch.b1laus01": //Lumi WS-USC01
+        //	state.numSwitches = 1
+        //    state.numButtons = 1
+        //    state.endpoints = [0x01,0xFF,0xFE,0xF2,0xFD,0xFC,0xFB]
+        //    break
         default:
         	displayDebugLog("Unknown device model: " + model)
     }
@@ -702,66 +777,69 @@ private Map dataMap(data)
 	// convert the catchall data from check-in to a map.
 	Map resultMap = [:]
 	int maxit = data.size()
-    int it = 4
-    while ( it < maxit )
-    {
-    	int lbl = 0x00000000 | data.get(it)
-        byte type = data.get(it+1)
-        switch ( type)
-       	{
-        	case DataType.BOOLEAN: 
-            	resultMap.put(lbl, (boolean)data.get(it+2))
-                it = it + 3
-                break
-            case DataType.UINT8:
-            	resultMap.put(lbl, (short)(0x0000 | data.get(it+2)))
-                it = it + 3
-                break
-            case DataType.UINT16:
-            	resultMap.put(lbl, (int)(0x00000000 | (data.get(it+3)<<8) | data.get(it+2)))
-                it = it + 4
-                break
-            case DataType.UINT32:
-            	long x = 0x0000000000000000
-                for ( int i = 0; i < 4; i++ )
-              		x |= data.get(it+i+2) << 8*i
-            	resultMap.put(lbl, x )
-                it = it + 6
-                break
-              case DataType.UINT40:
-            	long x = 0x000000000000000
-                for ( int i = 0; i < 5; i++ )
-              		x |= data.get(it+i+2) << 8*i
-            	resultMap.put(lbl, x )
-                it = it + 7
-                break  
-            case DataType.UINT64:
-            	long x = 0x0000000000000000
-                for ( int i = 0; i < 8; i++ )
-                	x |= data.get(it+i+2) << 8*i
-            	resultMap.put(lbl, x )
-                it = it + 10
-                break 
-            case DataType.INT8:
-            	resultMap.put(lbl, (short)(data.get(it+2)))
-                it = it + 3
-                break
-             case DataType.INT16:
-            	resultMap.put(lbl, (int)((data.get(it+3)<<8) | data.get(it+2)))
-                it = it + 4
-                break
-            case DataType.FLOAT4:
-                int x = 0x00000000 
-                for ( int i = 0; i < 4; i++ ) 
-                	x |= data.get(it+i+2) << 8*i
-                float y = Float.intBitsToFloat(x) 
-            	resultMap.put(lbl,y)
-                it = it + 6
-                break
-            default: displayDebugLog( "unrecognised type in dataMap: " + zigbee.convertToHexString(type) )
-            	return resultMap
+    int it = data.indexOf((short)0xff) + 3
+    if ( data.get(it-4) == 0x01 )
+        while ( it < maxit )
+        {
+            int lbl = 0x00000000 | data.get(it)
+            byte type = data.get(it+1)
+            switch ( type)
+            {
+                case DataType.BOOLEAN: 
+                    resultMap.put(lbl, (boolean)data.get(it+2))
+                    it = it + 3
+                    break
+                case DataType.UINT8:
+                    resultMap.put(lbl, (short)(0x0000 | data.get(it+2)))
+                    it = it + 3
+                    break
+                case DataType.UINT16:
+                    resultMap.put(lbl, (int)(0x00000000 | (data.get(it+3)<<8) | data.get(it+2)))
+                    it = it + 4
+                    break
+                case DataType.UINT32:
+                    long x = 0x0000000000000000
+                    for ( int i = 0; i < 4; i++ )
+                        x |= data.get(it+i+2) << 8*i
+                    resultMap.put(lbl, x )
+                    it = it + 6
+                    break
+                  case DataType.UINT40:
+                    long x = 0x000000000000000
+                    for ( int i = 0; i < 5; i++ )
+                        x |= data.get(it+i+2) << 8*i
+                    resultMap.put(lbl, x )
+                    it = it + 7
+                    break  
+                case DataType.UINT64:
+                    long x = 0x0000000000000000
+                    for ( int i = 0; i < 8; i++ )
+                        x |= data.get(it+i+2) << 8*i
+                    resultMap.put(lbl, x )
+                    it = it + 10
+                    break 
+                case DataType.INT8:
+                    resultMap.put(lbl, (short)(data.get(it+2)))
+                    it = it + 3
+                    break
+                 case DataType.INT16:
+                    resultMap.put(lbl, (int)((data.get(it+3)<<8) | data.get(it+2)))
+                    it = it + 4
+                    break
+                case DataType.FLOAT4:
+                    int x = 0x00000000 
+                    for ( int i = 0; i < 4; i++ ) 
+                        x |= data.get(it+i+2) << 8*i
+                    float y = Float.intBitsToFloat(x) 
+                    resultMap.put(lbl,y)
+                    it = it + 6
+                    break
+                default: displayDebugLog( "unrecognised type in dataMap: " + zigbee.convertToHexString(type) )
+                    return resultMap
+            }
         }
-    }
+    else
+    	displayDebugLog("catchall data unrecognised.")
     return resultMap
 }
 
