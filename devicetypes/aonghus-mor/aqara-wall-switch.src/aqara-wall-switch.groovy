@@ -88,6 +88,8 @@ metadata
                 manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM" 
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.n3acn3", deviceJoinName: "Aqara Switch QBKG26LM" 
+        fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
+        		manufacturer: "LUMI", model: "lumi.remote.b186acn01", deviceJoinName: "Aqara Switch WXKG03LM (2018)"
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000 0003 0019 FFFF 0012", outClusters: "0000 0004 0003 0005 0019 FFFF 0012", 
         		manufacturer: "LUMI", model: "lumi.remote.b186acn02", deviceJoinName: "Aqara Switch WXKG06LM"
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
@@ -667,7 +669,7 @@ def refresh()
                 	for ( int i = 1; i < state.numSwitches; i++ )
                     {
                     	def networkId = "${device.deviceNetworkId}-${i}"
-    					addChildDevice( "Aqara Wired Wall Switch Child", networkId , null,[label: "${device.displayName}-(${i})"])  
+    					addChildDevice( "Aqara Wall Switch Child", networkId , null,[label: "${device.displayName}-(${i})"])  
                         state.childDevices[i-1] = networkId
                     }
                 }
@@ -821,6 +823,7 @@ private getNumButtons()
             state.numButtons = 4
             state.endpoints = [0x01,0x02,0x03,0x29,0x02A,0x2B,0xF6]
             break
+        case "lumi.remote.b186acn01": //WXKG03LM
         case "lumi.remote.b186acn02": //WXKG06LM
        		state.numSwitches = 1
      		state.numButtons = 1
