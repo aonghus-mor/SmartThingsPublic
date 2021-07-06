@@ -1,0 +1,41 @@
+This is a smartthings device handler for the Xiaomi Aqara wall switches. Both  with and without neutral connection versions are covered, as well as the wireles switches. 
+This version is an extensive revision of the previous version with some new features.
+See at the bottom for the specific changes, including decoupled mode.
+In particular it now has its own child DH rather than using the smartthings provided child switch DH.  I recommend updating this before updating the main DH.
+It is based on work by @simic and @wastedabuser. 
+In the 2 or 3 switch wired versions, only one of the switches is required to be connected to the live + switched wire.  
+The other may be used as a soft switch.
+The device will also give the temperature (in integer degrees).
+The device responds to simple presses of the switch, to double presses and to press and hold.  
+
+This version uses child switches to represent the 2nd and 3rd switches.
+
+Several, so called, vid's are provided, which will be approriate for a wired swicth, an unwired switch, with or without battery.  
+There's also a distinction between with and without neutral wirfed versions
+
+Each switch action will generate a virtual button action as well as the hardware action, switching the wired switch off or on.
+These be used in conjunction with (e.g.) Smart Lighting or ABC (Advanced Button Controller) to trigger other actions.
+The swith presntation in the app also includes as stile from which certian actions can be set.
+The DH can distingush between single button presses, doubkle presses and press and hold.
+These will generate virtual button pushes (single, double or held) associated with the main DG (left hand switch) or the corresponding child DH (middle or right hand switch).
+
+In addition presing both buttons on a double switch will generate a press of button 2 from the main DH.
+
+In the case of an unwired switch I recommed using these buttons to toggle the state of the (e.g.) lamp, rather than the switch, as the trigger in Smart Lighting.
+This helps to avoid the situation where the switch and the lamp get out of sync with each other.  
+Pressing the switch will always change the state of the lamp, whether it is off or on.
+
+Changes from the previous version:
+1) This version has its own child DH, Aqara Wired Wall Switch Child
+2) The wired/unwired state is set by a boolean preference in the main app, for the left hand or single switch, and in the child DH for the right or middle switches
+3) For unwired switches the on/off state of the hardware is ingnored, it will always behave as a button.  
+The formware has a setting to make this happen.  I have not used this as it makes it impossible to register double presses or held.
+4) When the DH is open in the phone the button presses, etc, will appear on the screen for a moment.
+
+The version from 17 March 2021 implements decoupled mode. In decoupled mode the button press and the actual electrical switch behave as if they are decoupled. 
+Hence pressing the button sends a message to the hub that it has been pressed, but has no effect on the actual switch. The lamp doesn’t come on.
+In this version there is an extra preference which is True or False for Decoupled or Coupled mode respectively. When set to false the behavuour should be as before.
+In the DH presentation On/Off affects the electrical switch, whereas Momentary is like pressing the button.
+Note that double press and hold are not guaranteed to work in decoupled mode.
+
+The newest version adds support for various wireless switches.  Here the approriate 'vid' will be labelled button.
