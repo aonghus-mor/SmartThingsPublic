@@ -29,34 +29,26 @@ import physicalgraph.zigbee.zcl.DataType
 metadata 
 {
     definition (	name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
-    				//definition (name: "TestCode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
+                    vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
+                    ocfDeviceType: "oic.d.switch"
                     //vid: "a40a3ae3-71bc-33b0-b7f6-df7f0bced1ea", // switch with neutral wire
                     //ocfDeviceType: "oic.d.switch"
-                	vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
-                    ocfDeviceType: "oic.d.switch"
-                    //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (with Temp)
+                    //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (no battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
-                    //vid: "fef30d41-336f-3828-98bb-bca6d6b8c1cb", // button (with Temp & Battery)
-                    //vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",
+                    //vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",// button (with battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller" 
-                	//vid: "c6c70425-f7b7-36f6-9eef-a40781549c46", // shows everything
-                    //ocfDeviceType: "x.com.st.d.remotecontroller"
                 )
     {
-        //capability "Actuator"
-        //capability "Sensor"
         capability "Configuration"
         capability "Refresh"
         capability "Switch"
         capability "Momentary"
         capability "Button"
-        //capability "Holdable Button"
         capability "Temperature Measurement"
         capability "Health Check"
         capability "Power Meter"
         capability "Energy Meter"
-        //capability "Polling"
         capability "Battery"
         capability "Voltage Measurement"
         
@@ -67,10 +59,7 @@ metadata
         
         attribute "lastCheckin", "string"
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh","double"]
-        //attribute "momentary", "ENUM", ["Pressed", "Standby"]
-        //attribute "button", "ENUM", ["Pressed", "Held", "Standby"]
-        //attribute "tempOffset", "number"
-   
+        
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", 
         		manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
@@ -390,7 +379,8 @@ def parseSwitchOnOff(Map descMap)
                 displayDebugLog("Child ${idx+1}   ${button}")
                 break
             case 6:
-            	events << createEvent(name: 'button', value: 'pushed', data:[buttonNumber: 2], isStateChange: true )
+            	//events << createEvent(name: 'button', value: 'pushed', data:[buttonNumber: 2], isStateChange: true )
+                events << createEvent(name: 'button', value: action, data:[buttonNumber: 2], isStateChange: true )
                 break
             default:
             	displayDebugLog("Invalid read attr code")
@@ -838,7 +828,7 @@ private getNumButtons()
         case "lumi.remote.b286acn02": //WXKG07LM (2020)
         	state.numSwitches = 2
         	state.numButtons = 2
-            state.endpoints = [null,null,null,0x01,0x02,null,null]
+            state.endpoints = [null,null,null,0x01,0x02,null,0x03]
             break
         case "lumi.switch.b1laus01": //Lumi WS-USC01
         	state.numSwitches = 1

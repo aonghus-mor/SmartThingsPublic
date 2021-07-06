@@ -1,19 +1,17 @@
-metadata {
+metadata 
+{
 	definition (	name: "Aqara Wall Switch Child", namespace: "aonghus-mor", author: "aonghus-mor", 
                 	mnmn: "SmartThingsCommunity",
-                	vid: "bfddb57e-f398-3d50-b994-fa3754eb4da6", // switch only
+                	vid: "bfddb57e-f398-3d50-b994-fa3754eb4da6", // switch only (for wired) 
                 	ocfDeviceType: "oic.d.switch"
-                	//vid: "ca0b4663-15bd-3afe-bb35-60224cea7d32", //button only
+                	//vid: "052c5cad-cf03-3d0c-a0c4-744d2ce6f59a", //button only (for unwired)
     				//ocfDeviceType: "x.com.st.d.remotecontroller"
-                	//vid: "ba059eea-2860-33b2-92c0-3029ca8a9101", //switch & button
     			) 
     {
 		capability "Switch"
         capability "Button"
         capability "Momentary"
-		//capability "Actuator"
-		//capability "Sensor"
-        capability "Refresh"
+		capability "Refresh"
         capability "Health Check"
         
         preferences
