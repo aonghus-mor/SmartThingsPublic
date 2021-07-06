@@ -31,11 +31,14 @@ metadata
     definition (	name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
     				//definition (name: "TestCode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
-                	vid: "b52b5747-6802-3b53-a6d7-d581994e71be",   // switch (with Temp)
+                    //vid: "a40a3ae3-71bc-33b0-b7f6-df7f0bced1ea", // switch with neutral wire
+                    //ocfDeviceType: "oic.d.switch"
+                	vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
                     ocfDeviceType: "oic.d.switch"
                     //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (with Temp)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
                     //vid: "fef30d41-336f-3828-98bb-bca6d6b8c1cb", // button (with Temp & Battery)
+                    //vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",
                     //ocfDeviceType: "x.com.st.d.remotecontroller" 
                 	//vid: "c6c70425-f7b7-36f6-9eef-a40781549c46", // shows everything
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
@@ -94,6 +97,8 @@ metadata
         		manufacturer: "LUMI", model: "lumi.remote.b186acn02", deviceJoinName: "Aqara Switch WXKG06LM"
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
         		manufacturer: "LUMI", model: "lumi.remote.b286acn01", deviceJoinName: "Aqara Switch WXKG02LM (2018)"
+        fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
+         		manufacturer: "LUMI", model: "lumi.remote.b286acn02", deviceJoinName: "Aqara Switch WXKG07LM (2020)"       
   		fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
                 manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01"  
      }
@@ -830,6 +835,7 @@ private getNumButtons()
             state.endpoints = [null,null,null,0x01,null,null,null]
             break
         case "lumi.remote.b286acn01": //WXKG02LM (2018)
+        case "lumi.remote.b286acn02": //WXKG07LM (2020)
         	state.numSwitches = 2
         	state.numButtons = 2
             state.endpoints = [null,null,null,0x01,0x02,null,null]
