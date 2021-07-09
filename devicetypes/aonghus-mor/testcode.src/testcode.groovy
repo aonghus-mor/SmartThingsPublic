@@ -841,7 +841,7 @@ private getNumButtons()
         	displayDebugLog("Unknown device model: " + model)
             state.numSwitches = 2
         	state.numButtons = 2
-            state.endpoints = [null,null,null,0x01,0x02,null,0x03]  
+            state.endpoints = [null,null,null,0x01,0x02,null,null]  
     }
     displayDebugLog("endpoints: ${state.endpoints}")
     sendEvent(name: 'numberOfButtons', value: state.numButtons, displayed: false )
