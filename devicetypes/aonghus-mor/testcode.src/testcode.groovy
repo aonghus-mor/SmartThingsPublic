@@ -20,6 +20,7 @@
  *  13.10.2020 New version by @aonghus-mor for new smartthigs app.
  *  27.10.2020 Adapted for the new 3 button switch QBKG25LM ( Thanks to @Chiu for his help).
  *  09.03.2021 Extensive revision by @aonghus-mor, including own child DH.
+ *  03.07.2021 Added support for unwired switches, WXKG06LM & WXKG06LM, and simple switch, Lumi WS-USC01
 */
  
 import groovy.json.JsonOutput
@@ -27,29 +28,28 @@ import physicalgraph.zigbee.zcl.DataType
 
 metadata 
 {
-    //definition (name: "Aqara Wired Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
-    definition (name: "TestCode", namespace: "aonghus-mor", author: "aonghus-mor",
-                mnmn: "SmartThingsCommunity", 
-                //vid: "822341f9-0eac-3dc8-b02a-fbdc64fd9541",   // switch only
-                //vid: "2697954d-03ab-3157-9d1e-439050a62f41", // switch & Momentary
-                //vid: "da8be7d9-14f6-34d0-9bd0-ebf3c1e08f86", // momentary only with battery (no temperature)
-                vid: "1ce7101f-7613-3865-811a-196227c7e4ec", // momentary only with temperature & battery
-                //vid: "c6c70425-f7b7-36f6-9eef-a40781549c46", // shows everything
-                ocfDeviceType: "oic.d.switch")
+    definition (	//name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
+    				name: "testcode", namespace: "aonghus-mor", author: "aonghus-mor",
+                	mnmn: "SmartThingsCommunity", 
+                    //vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
+                    //ocfDeviceType: "oic.d.switch"
+                    //vid: "a40a3ae3-71bc-33b0-b7f6-df7f0bced1ea", // switch with neutral wire
+                    //ocfDeviceType: "oic.d.switch"
+                    //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (no battery)
+                    //ocfDeviceType: "x.com.st.d.remotecontroller"
+                    vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",// button (with battery)
+                    ocfDeviceType: "x.com.st.d.remotecontroller" 
+                )
     {
-        //capability "Actuator"
-        //capability "Sensor"
         capability "Configuration"
         capability "Refresh"
         capability "Switch"
         capability "Momentary"
         capability "Button"
-        //capability "Holdable Button"
         capability "Temperature Measurement"
         capability "Health Check"
         capability "Power Meter"
         capability "Energy Meter"
-        //capability "Polling"
         capability "Battery"
         capability "Voltage Measurement"
         
@@ -60,10 +60,7 @@ metadata
         
         attribute "lastCheckin", "string"
         attribute "lastPressType", "enum", ["soft","hard","both","held","released","refresh","double"]
-        //attribute "momentary", "ENUM", ["Pressed", "Standby"]
-        //attribute "button", "ENUM", ["Pressed", "Held", "Standby"]
-        //attribute "tempOffset", "number"
-   
+        
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0001,0002,0003,0004,0005,0006,0010,000A", outClusters: "0019,000A", 
         		manufacturer: "LUMI", model: "lumi.ctrl_neutral2", deviceJoinName: "Aqara Switch QBKG03LM"
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
@@ -84,10 +81,14 @@ metadata
                 manufacturer: "LUMI", model: "lumi.switch.l3acn3", deviceJoinName: "Aqara Switch QBKG25LM" 
         fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0001,0002,0019,000A", outClusters: "0000,000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.n3acn3", deviceJoinName: "Aqara Switch QBKG26LM" 
+        fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
+        		manufacturer: "LUMI", model: "lumi.remote.b186acn01", deviceJoinName: "Aqara Switch WXKG03LM (2018)"
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000 0003 0019 FFFF 0012", outClusters: "0000 0004 0003 0005 0019 FFFF 0012", 
         		manufacturer: "LUMI", model: "lumi.remote.b186acn02", deviceJoinName: "Aqara Switch WXKG06LM"
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
         		manufacturer: "LUMI", model: "lumi.remote.b286acn01", deviceJoinName: "Aqara Switch WXKG02LM (2018)"
+        fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
+         		manufacturer: "LUMI", model: "lumi.remote.b286acn02", deviceJoinName: "Aqara Switch WXKG07LM (2020)"       
   		fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
                 manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01"  
      }
@@ -276,9 +277,8 @@ private def getkWh(float enrgy)
 }
 
 // Convert raw 4 digit integer voltage value into percentage based on minVolts/maxVolts range
-private def getBattery(rawValue) {
-	// raw voltage is normally supplied as a 4 digit integer that needs to be divided by 1000
-	// but in the case the final zero is dropped then divide by 100 to get actual voltage value
+private def getBattery(rawValue) 
+{
     state.oldValue = state.oldValue ? state.oldValue : 0
     def event = []
     if ( rawValue != state.oldValue || state.Nhours == 5 )
@@ -292,13 +292,12 @@ private def getBattery(rawValue) {
         def roundedPct = Math.min(100, Math.round(pct * 100))
         def descText = "Battery at ${roundedPct}% (${rawVolts} Volts)"
         displayInfoLog(": $descText")
-        //event << createEvent(name: 'battery', value: roundedPct, unit: '%', descriptionText: "${descText}", isStateChange:true, displayed:true)
+        event << createEvent(name: 'battery', value: roundedPct, unit: '%', descriptionText: "${descText}", isStateChange:true, displayed:true)
         event << createEvent(name: 'voltage', value: rawVolts, unit: "V (${roundedPct}%)", displayed: true, isStateChange: true)
         displayDebugLog("Battery: ${event}")
     }
     else
     	state.Nhours = state.Nhours + 1
-    displayDebugLog("Battery Counter: ${state.Nhours}  ${rawValue}  ${state.oldValue}")
 	return event
 }
 
@@ -381,7 +380,8 @@ def parseSwitchOnOff(Map descMap)
                 displayDebugLog("Child ${idx+1}   ${button}")
                 break
             case 6:
-            	events << createEvent(name: 'button', value: 'pushed', data:[buttonNumber: 2], isStateChange: true )
+            	//events << createEvent(name: 'button', value: 'pushed', data:[buttonNumber: 2], isStateChange: true )
+                events << createEvent(name: 'button', value: action, data:[buttonNumber: 2], isStateChange: true )
                 break
             default:
             	displayDebugLog("Invalid read attr code")
@@ -579,7 +579,7 @@ def off()
         displayDebugLog(swoff)
     }
     else
-    	cmd = zigbee.command(0x0006, 0x01, "", [destEndpoint: state.endpoints[0]] )
+    	cmd = zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endpoints[0]] )
     
     displayDebugLog(cmd)
     cmd
@@ -665,7 +665,7 @@ def refresh()
                 	for ( int i = 1; i < state.numSwitches; i++ )
                     {
                     	def networkId = "${device.deviceNetworkId}-${i}"
-    					addChildDevice( "Aqara Wired Wall Switch Child", networkId , null,[label: "${device.displayName}-(${i})"])  
+    					addChildDevice( "Aqara Wall Switch Child", networkId , null,[label: "${device.displayName}-(${i})"])  
                         state.childDevices[i-1] = networkId
                     }
                 }
@@ -710,6 +710,7 @@ def refresh()
     displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
     
     sendEvent(name: 'supportedButtonValues', value: ['pushed', 'held', 'double'], isStateChange: true)
+    //sendEvent(name: 'supportedButtonValues', value: ["down","down_hold","down_2x"].encodeAsJSON(), isStateChange: true)
     sendEvent( name: 'checkInterval', value: 3000, data: [ protocol: 'zigbee', hubHardwareId: device.hub.hardwareID ] )
     
     //state.unwiredSwitches = [unwired]
@@ -818,15 +819,17 @@ private getNumButtons()
             state.numButtons = 4
             state.endpoints = [0x01,0x02,0x03,0x29,0x02A,0x2B,0xF6]
             break
+        case "lumi.remote.b186acn01": //WXKG03LM
         case "lumi.remote.b186acn02": //WXKG06LM
        		state.numSwitches = 1
      		state.numButtons = 1
             state.endpoints = [null,null,null,0x01,null,null,null]
             break
         case "lumi.remote.b286acn01": //WXKG02LM (2018)
+        case "lumi.remote.b286acn02": //WXKG07LM (2020) 
         	state.numSwitches = 2
         	state.numButtons = 2
-            state.endpoints = [null,null,null,0x01,0x02,null,null]
+            state.endpoints = [null,null,null,0x01,0x02,null,0x03]
             break
         case "lumi.switch.b1laus01": //Lumi WS-USC01
         	state.numSwitches = 1
@@ -836,7 +839,9 @@ private getNumButtons()
 		break
         default:
         	displayDebugLog("Unknown device model: " + model)
-            
+            state.numSwitches = 2
+        	state.numButtons = 2
+            state.endpoints = [null,null,null,0x01,0x02,null,0x03]  
     }
     displayDebugLog("endpoints: ${state.endpoints}")
     sendEvent(name: 'numberOfButtons', value: state.numButtons, displayed: false )
