@@ -721,7 +721,7 @@ def refresh()
                 setDecoupled() +
                 showDecoupled()
     else if ( state.opple )
-    	cmds = setOpple()
+    	cmds = setOPPLE()
      
 	displayDebugLog("State: ${state}")
     displayDebugLog( cmds )
