@@ -720,9 +720,11 @@ def refresh()
     			zigbee.readAttribute(0x0002, 0) +
                 setDecoupled() +
                 showDecoupled()
+    else if ( state.opple )
+    	cmds = setOpple()
      
 	displayDebugLog("State: ${state}")
-     displayDebugLog( cmds )
+    displayDebugLog( cmds )
      //updated()
      state.flag = null
      cmds
@@ -742,6 +744,16 @@ private def showDecoupled()
 	def cmds = zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"]) 
     for ( byte i = 1; i < state.decoupled.size(); i++ )
     	cmds += zigbee.readAttribute(0x0000, 0xFF22 +i, [mfgCode: "0x115F"])
+    return cmds
+}
+
+private def setOPPLE()
+{
+	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
+        		zigbee.readAttribute(0x0000, 0x0005) + 
+        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"]) +
+        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"]) + 
+        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"])
     return cmds
 }
 
@@ -779,6 +791,7 @@ private getNumButtons()
 {
     String model = device.getDataValue("model")
     state.oldOnOff = false
+    state.opple = false 
     switch ( model ) 
     {
     	case "lumi.ctrl_neutral1": //QBKG04LM
@@ -836,7 +849,13 @@ private getNumButtons()
             state.numButtons = 1
             state.endpoints = null
 			oldOnOff = true
-		break
+			break
+        case "lumi.remote.b486opcn01":
+        	state.numSwitches = 2
+        	state.numButtons = 2
+            state.endpoints = [null,null,null,0x01,0x02,0x03,null]  
+            state.opple = true
+            break
         default:
         	displayDebugLog("Unknown device model: " + model)
             state.numSwitches = 2
