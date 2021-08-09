@@ -29,6 +29,7 @@ import physicalgraph.zigbee.zcl.DataType
 metadata 
 {
     definition (	name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
+    				//name: "testcode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
                     vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
                     ocfDeviceType: "oic.d.switch"
@@ -89,7 +90,9 @@ metadata
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
          		manufacturer: "LUMI", model: "lumi.remote.b286acn02", deviceJoinName: "Aqara Switch WXKG07LM (2020)"       
   		fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
-                manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01"  
+                manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01" 
+        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
+                manufacturer: "LUMI", model: "lumi.switch.b2laus01", deviceJoinName: "Lumi WS-USC02"        
      }
 	
     preferences 
@@ -125,7 +128,7 @@ def parse(String description)
     else if (description?.startsWith('on/off: '))
         parseCustomMessage(description) 
    
-    def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) + "\n" + state.lastPressType
+    def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) //+ "\n" + state.lastPressType
     events << createEvent(name: "lastCheckin", value: now, descriptionText: "Check-In", displayed: debugLogging)
     
     displayDebugLog( "Parse returned: $events" )
@@ -541,7 +544,8 @@ def childRefresh(String dni, Map sets)
     	state.decoupled = []
     state.decoupled[idx] = sets.decoupled
     displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}   ${state.decoupled}")
-	refresh()
+	if ( child.refreshOn == null ? true : !state.refreshOn )
+    	refresh()
 }
 
 def on() 
@@ -699,11 +703,14 @@ def refresh()
         
         displayDebugLog(state.unwiredSwitches)
         childDevices = getChildDevices()
+        state.refreshOn = true
     	for (child in childDevices)
     	{	
             child.sendEvent(name: 'checkInterval', value: 3000)
             displayDebugLog("${child}  ${child.deviceNetworkId}")
+            child.refresh()
 		}
+        state.refreshOn = false
     }    
     displayDebugLog("Devices: ${state.childDevices}")
     displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
@@ -719,9 +726,11 @@ def refresh()
     			zigbee.readAttribute(0x0002, 0) +
                 setDecoupled() +
                 showDecoupled()
+    else if ( state.opple )
+    	cmds = setOPPLE()
      
 	displayDebugLog("State: ${state}")
-     displayDebugLog( cmds )
+    displayDebugLog( cmds )
      //updated()
      state.flag = null
      cmds
@@ -741,6 +750,16 @@ private def showDecoupled()
 	def cmds = zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"]) 
     for ( byte i = 1; i < state.decoupled.size(); i++ )
     	cmds += zigbee.readAttribute(0x0000, 0xFF22 +i, [mfgCode: "0x115F"])
+    return cmds
+}
+
+private def setOPPLE()
+{
+	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
+        		zigbee.readAttribute(0x0000, 0x0005) + 
+        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"]) +
+        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"]) + 
+        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"])
     return cmds
 }
 
@@ -778,6 +797,7 @@ private getNumButtons()
 {
     String model = device.getDataValue("model")
     state.oldOnOff = false
+    state.opple = false 
     switch ( model ) 
     {
     	case "lumi.ctrl_neutral1": //QBKG04LM
@@ -816,7 +836,7 @@ private getNumButtons()
         case "lumi.switch.n3acn3": //QBKG26LM
             state.numSwitches = 3
             state.numButtons = 4
-            state.endpoints = [0x01,0x02,0x03,0x29,0x02A,0x2B,0xF6]
+            state.endpoints = [0x01,0x02,0x03,0x29,0x2A,0x2B,0xF6]
             break
         case "lumi.remote.b186acn01": //WXKG03LM
         case "lumi.remote.b186acn02": //WXKG06LM
@@ -825,7 +845,7 @@ private getNumButtons()
             state.endpoints = [null,null,null,0x01,null,null,null]
             break
         case "lumi.remote.b286acn01": //WXKG02LM (2018)
-        case "lumi.remote.b286acn02": //WXKG07LM (2020)
+        case "lumi.remote.b286acn02": //WXKG07LM (2020) 
         	state.numSwitches = 2
         	state.numButtons = 2
             state.endpoints = [null,null,null,0x01,0x02,null,0x03]
@@ -835,10 +855,24 @@ private getNumButtons()
             state.numButtons = 1
             state.endpoints = null
 			oldOnOff = true
-		break
+			break
+        case "lumi.switch.b2laus01": //Lumi WS-USC02
+        	state.numSwitches = 2
+            state.numButtons = 2
+            state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
+			//oldOnOff = true
+			break
+        case "lumi.remote.b486opcn01":
+        	state.numSwitches = 2
+        	state.numButtons = 2
+            state.endpoints = [null,null,null,0x01,0x02,0x03,null]  
+            state.opple = true
+            break
         default:
         	displayDebugLog("Unknown device model: " + model)
-            
+            state.numSwitches = 2
+        	state.numButtons = 2
+            state.endpoints = [null,null,null,0x01,0x02,null,null]  
     }
     displayDebugLog("endpoints: ${state.endpoints}")
     sendEvent(name: 'numberOfButtons', value: state.numButtons, displayed: false )
