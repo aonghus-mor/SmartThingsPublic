@@ -224,7 +224,11 @@ private def parseCatchAllMessage(String description)
             }
         	break
         case 0x0006: 	
-            displayDebugLog('CatchAll message ignored.')
+			if ( oldOnOff )
+            	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint, value: cluster.data[0].toString()] )
+            else
+            	displayDebugLog('CatchAll message ignored.')
+            break
     }
     return events
 }
@@ -360,6 +364,7 @@ private def parseReportAttributeMessage(String description)
 def parseSwitchOnOff(Map descMap)
 {
 	//parse messages on read attr cluster 0x0006 or 0x0012
+    displayDebugLog(descMap)
     def events = []
     int endp = descMap.endpoint.toInteger()
     int endpcode = state.endpoints.indexOf(endp)
@@ -860,7 +865,7 @@ private getNumButtons()
         	state.numSwitches = 2
             state.numButtons = 2
             state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
-			//oldOnOff = true
+			oldOnOff = true
 			break
         case "lumi.remote.b486opcn01":
         	state.numSwitches = 2
