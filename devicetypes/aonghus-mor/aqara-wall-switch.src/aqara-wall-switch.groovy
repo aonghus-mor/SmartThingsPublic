@@ -224,7 +224,7 @@ private def parseCatchAllMessage(String description)
             }
         	break
         case 0x0006: 	
-			if ( oldOnOff )
+			if ( state.oldOnOff )
             	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint, value: cluster.data[0].toString()] )
             else
             	displayDebugLog('CatchAll message ignored.')
@@ -859,13 +859,13 @@ private getNumButtons()
         	state.numSwitches = 1
             state.numButtons = 1
             state.endpoints = null
-			oldOnOff = true
+			state.oldOnOff = true
 			break
         case "lumi.switch.b2laus01": //Lumi WS-USC02
         	state.numSwitches = 2
             state.numButtons = 2
             state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
-			oldOnOff = true
+			state.oldOnOff = true
 			break
         case "lumi.remote.b486opcn01":
         	state.numSwitches = 2
