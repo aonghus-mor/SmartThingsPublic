@@ -89,9 +89,9 @@ metadata
         		manufacturer: "LUMI", model: "lumi.remote.b286acn01", deviceJoinName: "Aqara Switch WXKG02LM (2018)"
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
          		manufacturer: "LUMI", model: "lumi.remote.b286acn02", deviceJoinName: "Aqara Switch WXKG07LM (2020)"       
-  		fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
+  		fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01" 
-        fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.b2laus01", deviceJoinName: "Lumi WS-USC02"        
      }
 	
@@ -227,7 +227,7 @@ private def parseCatchAllMessage(String description)
 			if ( state.oldOnOff )
             	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint, value: cluster.data[0].toString()] )
             else
-            	displayDebugLog('CatchAll message ignored.')
+            	displayDebugLog('CatchAll message ignored!')
             break
     }
     return events
@@ -364,7 +364,6 @@ private def parseReportAttributeMessage(String description)
 def parseSwitchOnOff(Map descMap)
 {
 	//parse messages on read attr cluster 0x0006 or 0x0012
-    displayDebugLog(descMap)
     def events = []
     int endp = descMap.endpoint.toInteger()
     int endpcode = state.endpoints.indexOf(endp)
