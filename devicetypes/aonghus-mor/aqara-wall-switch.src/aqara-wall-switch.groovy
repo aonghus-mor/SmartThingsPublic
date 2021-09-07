@@ -92,7 +92,11 @@ metadata
   		fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01" 
         fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
-                manufacturer: "LUMI", model: "lumi.switch.b2laus01", deviceJoinName: "Lumi WS-USC02"        
+                manufacturer: "LUMI", model: "lumi.switch.b2laus01", deviceJoinName: "Lumi WS-USC02"      
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.l1aeu1", deviceJoinName: "Aqara Switch EU-01" 
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.l2aeu1", deviceJoinName: "Aqara Switch EU-02"              
      }
 	
     preferences 
@@ -782,7 +786,13 @@ def configure()
 def updated()
 {
 	displayDebugLog('updated')
-	refresh()
+    if ( getDataValue("onOff") != null )
+    {
+    	updateDataValue("onOff", "catchall")
+    	response(configure())
+    }
+    else
+    	refresh()
 }
 
 def ping()
@@ -855,12 +865,14 @@ private getNumButtons()
             state.endpoints = [null,null,null,0x01,0x02,null,0x03]
             break
         case "lumi.switch.b1laus01": //Lumi WS-USC01
+        case "lumi.switch.l1aeu1": //Aqara Switch EU-01
         	state.numSwitches = 1
             state.numButtons = 1
             state.endpoints = null
 			state.oldOnOff = true
 			break
         case "lumi.switch.b2laus01": //Lumi WS-USC02
+        case "lumi.switch.l2aeu1": //Aqara Switch EU-02
         	state.numSwitches = 2
             state.numButtons = 2
             state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
