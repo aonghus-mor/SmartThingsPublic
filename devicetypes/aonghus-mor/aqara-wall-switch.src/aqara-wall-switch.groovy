@@ -542,17 +542,24 @@ private def childFromNetworkId(String dni)
 
 def childRefresh(String dni, Map sets) 
 {
-    displayInfoLog("Child Refresh: ${dni}")
+    log.info "${device.displayName} Child Refresh: ${dni} ${state.childDevices}"
     def child = childFromNetworkId(dni)
-    def idx = state.childDevices.indexOf(dni) + 1
-    if ( state.unwiredSwitches == null )
-    	state.unwiredSwitches = []
-    state.unwiredSwitches[idx] = sets.unwired
-    if ( state.decoupled == null )
-    	state.decoupled = []
-    state.decoupled[idx] = sets.decoupled
+    try
+    {
+    	def idx = state.childDevices.indexOf(dni) + 1
+        if ( state.unwiredSwitches == null )
+            state.unwiredSwitches = []
+        state.unwiredSwitches[idx] = sets.unwired
+        if ( state.decoupled == null )
+            state.decoupled = []
+        state.decoupled[idx] = sets.decoupled
+    }
+    catch(Exception e) 
+    {
+		log.debug "${device.displayName} ${e}"
+    }
     displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}   ${state.decoupled}")
-	if ( child.refreshOn == null ? true : !state.refreshOn )
+	if ( !state.refreshOn )
     	refresh()
 }
 
@@ -624,7 +631,9 @@ private def clearState()
 
 def refresh() 
 {
-	displayInfoLog( "refreshing" )
+	settings.infoLogging = true
+    settings.debugLogging = true
+    displayInfoLog( "refreshing" )
     clearState()
     def dat = new Date()
     state.lastTempTime = dat.time
@@ -774,12 +783,14 @@ private def setOPPLE()
 def installed()
 {
 	displayDebugLog('installed')
+    settings.infoLogging = true
     refresh()
 }
 
 def configure()
 {
 	displayDebugLog('configure')
+    settings.infoLogging = true
 	refresh()
 }
 
