@@ -542,11 +542,13 @@ private def childFromNetworkId(String dni)
 
 def childRefresh(String dni, Map sets) 
 {
-    log.info "${device.displayName} Child Refresh: ${dni} ${state.childDevices}"
+    log.info "${device.displayName} Child Refresh: ${dni} ${state.childDevices} ${sets}"
     def child = childFromNetworkId(dni)
     try
     {
-    	def idx = state.childDevices.indexOf(dni) + 1
+    	if ( state.childDevices == null )
+        	buildChildDevices()
+        def idx = state.childDevices.indexOf(dni) + 1
         if ( state.unwiredSwitches == null )
             state.unwiredSwitches = []
         state.unwiredSwitches[idx] = sets.unwired
@@ -559,8 +561,8 @@ def childRefresh(String dni, Map sets)
 		log.debug "${device.displayName} ${e}"
     }
     displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}   ${state.decoupled}")
-	if ( !state.refreshOn )
-    	refresh()
+	//if ( !state.refreshOn )
+    //	refresh()
 }
 
 def on() 
@@ -697,28 +699,10 @@ def refresh()
 			displayInfoLog("Child created")
 		}    
         else
-        {	
-        	state.childDevices = []
-            childDevices = getChildDevices()
-            if ( state.numSwitches == 2 )
-             	state.childDevices[0] = childDevices[0].deviceNetworkId
-			else
-            {
-            	if ( childDevices[0].deviceNetworkId[-1].toInteger() < childDevices[1].deviceNetworkId[-1].toInteger() )
-                {
-                	state.childDevices[0] = childDevices[0].deviceNetworkId
-                    state.childDevices[1] = childDevices[1].deviceNetworkId
-                }
-                else
-                {
-                	state.childDevices[0] = childDevices[1].deviceNetworkId
-                    state.childDevices[1] = childDevices[0].deviceNetworkId
-                }
-            }
-        }
-        displayDebugLog(state.childDevices)
+        	buildChildDevices()
+        displayDebugLog("Children(b): ${state.childDevices}")
         
-        displayDebugLog(state.unwiredSwitches)
+        displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
         childDevices = getChildDevices()
         state.refreshOn = true
     	for (child in childDevices)
@@ -751,6 +735,27 @@ def refresh()
      //updated()
      state.flag = null
      cmds
+}
+
+private def buildChildDevices()
+{	
+    state.childDevices = []
+    def childDevices = getChildDevices()
+    if ( state.numSwitches == 2 )
+    state.childDevices[0] = childDevices[0].deviceNetworkId
+    else
+    {
+        if ( childDevices[0].deviceNetworkId[-1].toInteger() < childDevices[1].deviceNetworkId[-1].toInteger() )
+        {
+            state.childDevices[0] = childDevices[0].deviceNetworkId
+            state.childDevices[1] = childDevices[1].deviceNetworkId
+        }
+        else
+        {
+            state.childDevices[0] = childDevices[1].deviceNetworkId
+            state.childDevices[1] = childDevices[0].deviceNetworkId
+        }
+    }
 }
 
 private def setDecoupled()
