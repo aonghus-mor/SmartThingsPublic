@@ -228,10 +228,10 @@ private def parseCatchAllMessage(String description)
             }
         	break
         case 0x0006: 	
-			if ( state.oldOnOff )
+			//if ( state.oldOnOff )
             	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint, value: cluster.data[0].toString()] )
-            else
-            	displayDebugLog('CatchAll message ignored!')
+            //else
+            //	displayDebugLog('CatchAll message ignored!')
             break
     }
     return events
