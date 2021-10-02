@@ -483,7 +483,7 @@ private def getChild(int i)
     	def idx = state.childDevices[i]	
     	for (child1 in children)
     	{	
-        	if ( child.deviceNetworkId == idx )
+        	if ( child1.deviceNetworkId == idx )
 			{
             	child = child1
 				break
