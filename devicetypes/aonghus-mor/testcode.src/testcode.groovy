@@ -31,14 +31,14 @@ metadata
     definition (	//name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
     				name: "testcode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
-                    //vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
-                    //ocfDeviceType: "oic.d.switch"
+                    vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
+                    ocfDeviceType: "oic.d.switch"
                     //vid: "a40a3ae3-71bc-33b0-b7f6-df7f0bced1ea", // switch with neutral wire
                     //ocfDeviceType: "oic.d.switch"
                     //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (no battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
-                    vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",// button (with battery)
-                    ocfDeviceType: "x.com.st.d.remotecontroller" 
+                    //vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",// button (with battery)
+                    //ocfDeviceType: "x.com.st.d.remotecontroller" 
                 )
     {
         capability "Configuration"
@@ -89,8 +89,14 @@ metadata
         		manufacturer: "LUMI", model: "lumi.remote.b286acn01", deviceJoinName: "Aqara Switch WXKG02LM (2018)"
         fingerprint profileId: "0104", deviceId: "5F01", inClusters: "0000,0003,0019,0012,FFFF", outClusters: "0000,0003,0004,0005,0019,0012,FFFF", 
          		manufacturer: "LUMI", model: "lumi.remote.b286acn02", deviceJoinName: "Aqara Switch WXKG07LM (2020)"       
-  		fingerprint profileId: "0104", deviceId: "0051", inClusters: "0000,0003,0002,0004,0005,0006,0009", outClusters: "0000,000A,0019,0021", 
-                manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01"  
+  		fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b1laus01", deviceJoinName: "Lumi WS-USC01" 
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b2laus01", deviceJoinName: "Lumi WS-USC02"      
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.l1aeu1", deviceJoinName: "Aqara Switch EU-01" 
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.l2aeu1", deviceJoinName: "Aqara Switch EU-02"              
      }
 	
     preferences 
@@ -126,7 +132,7 @@ def parse(String description)
     else if (description?.startsWith('on/off: '))
         parseCustomMessage(description) 
    
-    def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) + "\n" + state.lastPressType
+    def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) //+ "\n" + state.lastPressType
     events << createEvent(name: "lastCheckin", value: now, descriptionText: "Check-In", displayed: debugLogging)
     
     displayDebugLog( "Parse returned: $events" )
@@ -222,7 +228,11 @@ private def parseCatchAllMessage(String description)
             }
         	break
         case 0x0006: 	
-            displayDebugLog('CatchAll message ignored.')
+			//if ( state.oldOnOff )
+            	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint, value: cluster.data[0].toString()] )
+            //else
+            //	displayDebugLog('CatchAll message ignored!')
+            break
     }
     return events
 }
@@ -473,7 +483,7 @@ private def getChild(int i)
     	def idx = state.childDevices[i]	
     	for (child1 in children)
     	{	
-        	if ( child.deviceNetworkId == idx )
+        	if ( child1.deviceNetworkId == idx )
 			{
             	child = child1
 				break
@@ -532,17 +542,27 @@ private def childFromNetworkId(String dni)
 
 def childRefresh(String dni, Map sets) 
 {
-    displayInfoLog("Child Refresh: ${dni}")
+    log.info "${device.displayName} Child Refresh: ${dni} ${state.childDevices} ${sets}"
     def child = childFromNetworkId(dni)
-    def idx = state.childDevices.indexOf(dni) + 1
-    if ( state.unwiredSwitches == null )
-    	state.unwiredSwitches = []
-    state.unwiredSwitches[idx] = sets.unwired
-    if ( state.decoupled == null )
-    	state.decoupled = []
-    state.decoupled[idx] = sets.decoupled
+    try
+    {
+    	if ( state.childDevices == null )
+        	buildChildDevices()
+        def idx = state.childDevices.indexOf(dni) + 1
+        if ( state.unwiredSwitches == null )
+            state.unwiredSwitches = []
+        state.unwiredSwitches[idx] = sets.unwired
+        if ( state.decoupled == null )
+            state.decoupled = []
+        state.decoupled[idx] = sets.decoupled
+    }
+    catch(Exception e) 
+    {
+		log.debug "${device.displayName} ${e}"
+    }
     displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}   ${state.decoupled}")
-	refresh()
+	//if ( !state.refreshOn )
+    //	refresh()
 }
 
 def on() 
@@ -613,7 +633,9 @@ private def clearState()
 
 def refresh() 
 {
-	displayInfoLog( "refreshing" )
+	settings.infoLogging = true
+    settings.debugLogging = true
+    displayInfoLog( "refreshing" )
     clearState()
     def dat = new Date()
     state.lastTempTime = dat.time
@@ -677,34 +699,19 @@ def refresh()
 			displayInfoLog("Child created")
 		}    
         else
-        {	
-        	state.childDevices = []
-            childDevices = getChildDevices()
-            if ( state.numSwitches == 2 )
-             	state.childDevices[0] = childDevices[0].deviceNetworkId
-			else
-            {
-            	if ( childDevices[0].deviceNetworkId[-1].toInteger() < childDevices[1].deviceNetworkId[-1].toInteger() )
-                {
-                	state.childDevices[0] = childDevices[0].deviceNetworkId
-                    state.childDevices[1] = childDevices[1].deviceNetworkId
-                }
-                else
-                {
-                	state.childDevices[0] = childDevices[1].deviceNetworkId
-                    state.childDevices[1] = childDevices[0].deviceNetworkId
-                }
-            }
-        }
-        displayDebugLog(state.childDevices)
+        	buildChildDevices()
+        displayDebugLog("Children(b): ${state.childDevices}")
         
-        displayDebugLog(state.unwiredSwitches)
+        displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
         childDevices = getChildDevices()
+        state.refreshOn = true
     	for (child in childDevices)
     	{	
             child.sendEvent(name: 'checkInterval', value: 3000)
             displayDebugLog("${child}  ${child.deviceNetworkId}")
+            child.refresh()
 		}
+        state.refreshOn = false
     }    
     displayDebugLog("Devices: ${state.childDevices}")
     displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
@@ -715,13 +722,14 @@ def refresh()
     
     //state.unwiredSwitches = [unwired]
     def cmds = []
+    if ( state.opple )
+    	cmds = setOPPLE()
     if ( state.endpoints[0] != null )
     	cmds = 	zigbee.readAttribute(0x0001, 0) + 
     			zigbee.readAttribute(0x0002, 0) +
                 setDecoupled() +
                 showDecoupled()
-    else if ( state.opple )
-    	cmds = setOPPLE()
+   
      
 	displayDebugLog("State: ${state}")
     displayDebugLog( cmds )
@@ -730,20 +738,57 @@ def refresh()
      cmds
 }
 
+private def buildChildDevices()
+{	
+    state.childDevices = []
+    def childDevices = getChildDevices()
+    if ( state.numSwitches == 2 )
+    state.childDevices[0] = childDevices[0].deviceNetworkId
+    else
+    {
+        if ( childDevices[0].deviceNetworkId[-1].toInteger() < childDevices[1].deviceNetworkId[-1].toInteger() )
+        {
+            state.childDevices[0] = childDevices[0].deviceNetworkId
+            state.childDevices[1] = childDevices[1].deviceNetworkId
+        }
+        else
+        {
+            state.childDevices[0] = childDevices[1].deviceNetworkId
+            state.childDevices[1] = childDevices[0].deviceNetworkId
+        }
+    }
+}
+
 private def setDecoupled()
 {
 	displayDebugLog("Decoupled: ${state.decoupled}   ${decoupled}" )
-    def cmds = zigbee.writeAttribute(0x0000, 0xFF22, DataType.UINT8, state.decoupled[0] ? 0xFE : 0x12, [mfgCode: "0x115F"]) 
-    for ( byte i = 1; i < state.decoupled.size(); i++ )
-    	cmds += zigbee.writeAttribute(0x0000, 0xFF22 +i, DataType.UINT8, state.decoupled[i] ? 0xFE : 0x12 + i * 0x10, [mfgCode: "0x115F"])
+    def cmds
+    if ( state.opple )
+    {
+    	cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
+    }
+    else
+    {	
+    	cmds = zigbee.writeAttribute(0x0000, 0xFF22, DataType.UINT8, state.decoupled[0] ? 0xFE : 0x12, [mfgCode: "0x115F"]) 
+    	for ( byte i = 1; i < state.decoupled.size(); i++ )
+    		cmds += zigbee.writeAttribute(0x0000, 0xFF22 +i, DataType.UINT8, state.decoupled[i] ? 0xFE : 0x12 + i * 0x10, [mfgCode: "0x115F"])
+    }
     return cmds
 }
 
 private def showDecoupled()
 {
-	def cmds = zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"]) 
-    for ( byte i = 1; i < state.decoupled.size(); i++ )
-    	cmds += zigbee.readAttribute(0x0000, 0xFF22 +i, [mfgCode: "0x115F"])
+	def cmds
+    if ( state.opple )
+    {
+    	cmds = zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) 
+    }
+    else
+    {
+    	cmds = zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"]) 
+    	for ( byte i = 1; i < state.decoupled.size(); i++ )
+    		cmds += zigbee.readAttribute(0x0000, 0xFF22 +i, [mfgCode: "0x115F"])
+    }
     return cmds
 }
 
@@ -751,28 +796,34 @@ private def setOPPLE()
 {
 	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
         		zigbee.readAttribute(0x0000, 0x0005) + 
-        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"]) +
-        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"]) + 
-        		zigbee.writeAttribute(0xFCC0, 0x0009, 0x20, 0x01, [mfgCode: "0x115F"])
+        		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"])
     return cmds
 }
 
 def installed()
 {
 	displayDebugLog('installed')
+    settings.infoLogging = true
     refresh()
 }
 
 def configure()
 {
 	displayDebugLog('configure')
+    settings.infoLogging = true
 	refresh()
 }
 
 def updated()
 {
 	displayDebugLog('updated')
-	refresh()
+    if ( getDataValue("onOff") != null )
+    {
+    	updateDataValue("onOff", "catchall")
+    	response(configure())
+    }
+    else
+    	refresh()
 }
 
 def ping()
@@ -830,7 +881,7 @@ private getNumButtons()
         case "lumi.switch.n3acn3": //QBKG26LM
             state.numSwitches = 3
             state.numButtons = 4
-            state.endpoints = [0x01,0x02,0x03,0x29,0x02A,0x2B,0xF6]
+            state.endpoints = [0x01,0x02,0x03,0x29,0x2A,0x2B,0xF6]
             break
         case "lumi.remote.b186acn01": //WXKG03LM
         case "lumi.remote.b186acn02": //WXKG06LM
@@ -845,10 +896,18 @@ private getNumButtons()
             state.endpoints = [null,null,null,0x01,0x02,null,0x03]
             break
         case "lumi.switch.b1laus01": //Lumi WS-USC01
+        case "lumi.switch.l1aeu1": //Aqara Switch EU-01
         	state.numSwitches = 1
             state.numButtons = 1
             state.endpoints = null
-			oldOnOff = true
+			state.oldOnOff = true
+			break
+        case "lumi.switch.b2laus01": //Lumi WS-USC02
+        case "lumi.switch.l2aeu1": //Aqara Switch EU-02
+        	state.numSwitches = 2
+            state.numButtons = 2
+            state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
+			state.opple = true
 			break
         case "lumi.remote.b486opcn01":
         	state.numSwitches = 2
