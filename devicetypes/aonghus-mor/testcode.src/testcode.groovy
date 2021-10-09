@@ -725,7 +725,7 @@ def refresh()
     if ( state.opple )
     	cmds = setOPPLE()
     if ( state.endpoints[0] != null )
-    	cmds = 	zigbee.readAttribute(0x0001, 0) + 
+    	cmds += zigbee.readAttribute(0x0001, 0) + 
     			zigbee.readAttribute(0x0002, 0) +
                 setDecoupled() +
                 showDecoupled()
