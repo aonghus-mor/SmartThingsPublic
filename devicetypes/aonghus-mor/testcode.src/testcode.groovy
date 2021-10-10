@@ -355,6 +355,8 @@ private def parseReportAttributeMessage(String description)
             state.flag = vals[descMap.value]
             events = events + parseSwitchOnOff(descMap)
             break
+        case "FCC0": //Opple
+        	break
  		//case "0008":
         //	if ( descMap.attrId == "0000")
     	//		event = createEvent(name: "switch", value: "off")
@@ -765,7 +767,8 @@ private def setDecoupled()
     def cmds
     if ( state.opple )
     {
-    	cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
+    	//cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
+    	cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x03, [mfgCode: "0x115F"])
     }
     else
     {	
@@ -906,7 +909,8 @@ private getNumButtons()
         case "lumi.switch.l2aeu1": //Aqara Switch EU-02
         	state.numSwitches = 2
             state.numButtons = 2
-            state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
+            //state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
+            state.endpoints = [0x01,0x02,0xF3,0x33,0x34,0xF5,0xF6]
 			state.opple = true
 			break
         case "lumi.remote.b486opcn01":
