@@ -159,6 +159,9 @@ private def parseCatchAllMessage(String description)
 	displayDebugLog( cluster )
     def events = []
     
+    //Map myMap = parseFCC0F7('00000000230e00000e0b230d00200b3669210a00209a000321051a280301106501106423')
+    //displayDebugLog("FCC0F7Map: ${myMap}")
+    
     switch ( cluster.clusterId ) 
     {
     	case 0x0000: 
@@ -356,6 +359,12 @@ private def parseReportAttributeMessage(String description)
             events = events + parseSwitchOnOff(descMap)
             break
         case "FCC0": //Opple
+        	if ( descMap.attrId == "00F7" )
+            {
+            	Map myMap = parseFCCF7(decMap.value)
+            	displayDebugLog("FCCF7 Map: ${myMap}")
+                events = events + myMap.get(3)
+            }
         	break
  		//case "0008":
         //	if ( descMap.attrId == "0000")
@@ -365,6 +374,28 @@ private def parseReportAttributeMessage(String description)
         	displayDebugLog( "unknown cluster in $descMap" )
     }
 	return events
+}
+
+private Map parseFCC0F7(String mystring)
+{
+	Map myMap
+    try
+    {
+        List mybytes = [0x01, 0xff, 0x42]
+    	List mybytes1 = mystring.decodeHex()
+        int i = mybytes1.size()
+        while ( i )
+        {
+        	i -= 1
+            mybytes += [(Byte)mybytes1[i] & 0xff]
+        }
+        myMap = dataMap(mybytes)
+    }
+    catch(Exception e) 
+    {
+		displayDebugLog( "${e}")
+    }
+    return myMap
 }
 
 def parseSwitchOnOff(Map descMap)
@@ -767,8 +798,13 @@ private def setDecoupled()
     def cmds
     if ( state.opple )
     {
+    	def masks = [0x01,0x02,0x04]
+        def code = 0x00
+        for ( int i = 0; i < state.decoupled.size(); i++ )
+        	if ( state.decoupled[i] )
+            	code = code | masks[i]
     	//cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
-    	cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x03, [mfgCode: "0x115F"])
+    	cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
     else
     {	
@@ -799,7 +835,8 @@ private def setOPPLE()
 {
 	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
         		zigbee.readAttribute(0x0000, 0x0005) + 
-        		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"])
+        		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"]) +
+                zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 1000, [mfgCode: "0x115F"])
     return cmds
 }
 
@@ -910,7 +947,7 @@ private getNumButtons()
         	state.numSwitches = 2
             state.numButtons = 2
             //state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
-            state.endpoints = [0x01,0x02,0xF3,0x33,0x34,0xF5,0xF6]
+            state.endpoints = [0x01,0x02,0xF3,0x29,0x2a,0xF5,0xF6]
 			state.opple = true
 			break
         case "lumi.remote.b486opcn01":
@@ -936,12 +973,17 @@ private Integer convertHexToInt(hex)
     return result
 }
 
+private int max(int a, int b)
+{
+	return (a > b) ? a : b
+}
+
 private Map dataMap(data)
 {
 	// convert the catchall data from check-in to a map.
 	Map resultMap = [:]
 	int maxit = data.size()
-    int it = data.indexOf((short)0xff) + 3
+    int it = max(data.indexOf((short)0xff), data.indexOf(255)) + 3
     if ( data.get(it-4) == 0x01 )
         while ( it < maxit )
         {
@@ -958,7 +1000,8 @@ private Map dataMap(data)
                     it = it + 3
                     break
                 case DataType.UINT16:
-                    resultMap.put(lbl, (int)(0x00000000 | (data.get(it+3)<<8) | data.get(it+2)))
+        			int x = (0x00000000 | (data.get(it+3)<<8) | data.get(it+2))
+                    resultMap.put(lbl, lbl == 10 ? Integer.toHexString(x) : x )
                     it = it + 4
                     break
                 case DataType.UINT32:
