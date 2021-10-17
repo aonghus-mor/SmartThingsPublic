@@ -796,7 +796,8 @@ private def setDecoupled()
 {
 	displayDebugLog("Decoupled: ${state.decoupled}   ${decoupled}" )
     def cmds
-    if ( state.opple )
+    //if ( state.opple )
+    if ( false )
     {
     	def masks = [0x01,0x02,0x04]
         def code = 0x00
@@ -818,7 +819,8 @@ private def setDecoupled()
 private def showDecoupled()
 {
 	def cmds
-    if ( state.opple )
+    //if ( state.opple )
+    if ( false )
     {
     	cmds = zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) 
     }
