@@ -838,7 +838,7 @@ private def setOPPLE()
 	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
         		zigbee.readAttribute(0x0000, 0x0005) + 
         		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"]) +
-                zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 1000, [mfgCode: "0x115F"])
+                zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 10, [mfgCode: "0x115F"])
     return cmds
 }
 
