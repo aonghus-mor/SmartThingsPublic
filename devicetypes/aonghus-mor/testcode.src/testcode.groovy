@@ -402,7 +402,7 @@ def parseSwitchOnOff(Map descMap)
 {
 	//parse messages on read attr cluster 0x0006 or 0x0012
     def events = []
-    int endp = descMap.endpoint.toInteger()
+    int endp = Integer.parseInt(descMap.endpoint, 16)
     int endpcode = state.endpoints.indexOf(endp)
     state.lastEndpcode = endpcode
 	if ( endpcode > 2 || state.flag == 'double' )
@@ -809,9 +809,10 @@ private def setDecoupled()
     }
     else
     {	
-    	cmds = zigbee.writeAttribute(0x0000, 0xFF22, DataType.UINT8, state.decoupled[0] ? 0xFE : 0x12, [mfgCode: "0x115F"]) 
-    	for ( byte i = 1; i < state.decoupled.size(); i++ )
-    		cmds += zigbee.writeAttribute(0x0000, 0xFF22 +i, DataType.UINT8, state.decoupled[i] ? 0xFE : 0x12 + i * 0x10, [mfgCode: "0x115F"])
+    	def codea = [0xFF22, 0xFF23, 0xFF24]
+        def codeb = [0x12, 0x22, 0x32] 
+    	for ( byte i = 0; i < state.decoupled.size(); i++ )
+    		cmds += zigbee.writeAttribute(0x0000, codea[i], DataType.UINT8, state.decoupled[i] ? 0xFE : codeb[i], [mfgCode: "0x115F"])
     }
     return cmds
 }
@@ -826,9 +827,9 @@ private def showDecoupled()
     }
     else
     {
-    	cmds = zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"]) 
-    	for ( byte i = 1; i < state.decoupled.size(); i++ )
-    		cmds += zigbee.readAttribute(0x0000, 0xFF22 +i, [mfgCode: "0x115F"])
+    	def codea = [0xFF22, 0xFF23, 0xFF24]
+    	for ( byte i = 0; i < state.decoupled.size(); i++ )
+    		cmds += zigbee.readAttribute(0x0000, codea[i], [mfgCode: "0x115F"])
     }
     return cmds
 }
@@ -838,7 +839,8 @@ private def setOPPLE()
 	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
         		zigbee.readAttribute(0x0000, 0x0005) + 
         		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"]) +
-                zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 10, [mfgCode: "0x115F"])
+                zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 10,  [mfgCode: "0x115F"]) +
+                zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, 0x01, [mfgCode: "0x115F"])
     return cmds
 }
 
