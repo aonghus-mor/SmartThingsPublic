@@ -232,7 +232,7 @@ private def parseCatchAllMessage(String description)
         	break
         case 0x0006: 	
 			//if ( state.oldOnOff )
-            	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint, value: cluster.data[0].toString()] )
+            	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint.toString(), value: cluster.data[0].toString()] )
             //else
             //	displayDebugLog('CatchAll message ignored!')
             break
@@ -330,6 +330,8 @@ private def parseReportAttributeMessage(String description)
         	displayDebugLog( "Basic Cluster: $descMap" )
             if ( descMap.attrId == "0007" && descMap.value != "03" )
             	state.batteryPresent = false
+            else if ( descMap.attrId == "FF22" || descMap.attrID == "FF23" || descMap.attrId == "FF24")
+            	displayDebugLog("Decoupled Mode - attrId: ${descMap.attrId} -  ${descMap.value}")
             break
     	case "0001": //battery
         	if ( descMap.value == "0000" )
@@ -413,11 +415,13 @@ def parseSwitchOnOff(Map descMap)
         {
         	case 0:
             case 3:
+            case 7:
             	events << createEvent( name: 'button', value: action, data:[buttonNumber: 1], isStateChange: true)
                 break
             case 1..2:
             case 4..5:
-            	int idx = endpcode - ( endpcode < 3 ? 1 : 4 )
+            case 8:
+            	int idx = endpcode - ( endpcode < 3 ? 1 : ( endpcode < 6 ? 4 : 8 ) )
                 Map button = [name: 'button', value: action, data:[buttonNumber: 1], isStateChange: true]
             	getChild(idx).sendEvent( button)
                 displayDebugLog("Child ${idx+1}   ${button}")
@@ -795,7 +799,7 @@ private def buildChildDevices()
 private def setDecoupled()
 {
 	displayDebugLog("Decoupled: ${state.decoupled}   ${decoupled}" )
-    def cmds
+    def cmds = []
     //if ( state.opple )
     if ( false )
     {
@@ -819,7 +823,7 @@ private def setDecoupled()
 
 private def showDecoupled()
 {
-	def cmds
+	def cmds = []
     //if ( state.opple )
     if ( false )
     {
@@ -951,7 +955,7 @@ private getNumButtons()
         	state.numSwitches = 2
             state.numButtons = 2
             //state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
-            state.endpoints = [0x01,0x02,0xF3,0x29,0x2a,0xF5,0xF6]
+            state.endpoints = [0x01,0x02,0xF3,0x29,0x2a,0xF5,0xF6, 0x33,0x34]
 			state.opple = true
 			break
         case "lumi.remote.b486opcn01":
