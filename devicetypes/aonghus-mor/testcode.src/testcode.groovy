@@ -361,9 +361,9 @@ private def parseReportAttributeMessage(String description)
             events = events + parseSwitchOnOff(descMap)
             break
         case "FCC0": //Opple
-        	if ( descMap.attrId == "00F7" )
+        	if ( descMap.attrId == "00f7" )
             {
-            	Map myMap = parseFCCF7(decMap.value)
+            	Map myMap = parseFCCF7(descMap.value)
             	displayDebugLog("FCCF7 Map: ${myMap}")
                 events = events + myMap.get(3)
             }
@@ -842,7 +842,7 @@ private def setOPPLE()
 {
 	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
         		zigbee.readAttribute(0x0000, 0x0005) + 
-        		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"]) +
+        		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x00, [mfgCode: "0x115F"]) +
                 zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 10,  [mfgCode: "0x115F"]) +
                 zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, 0x01, [mfgCode: "0x115F"])
     return cmds
