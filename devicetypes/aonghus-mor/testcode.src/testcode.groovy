@@ -324,30 +324,37 @@ private def parseReportAttributeMessage(String description)
      }
 	 def events = []
     
-    switch (descMap.cluster) 
+    switch (Integer.parseInt(descMap.cluster, 16)) 
     {
-    	case "0000":
+    	case 0x0000:
         	displayDebugLog( "Basic Cluster: $descMap" )
-            if ( descMap.attrId == "0007" && descMap.value != "03" )
-            	state.batteryPresent = false
-            else if ( descMap.attrId == "FF22" || descMap.attrID == "FF23" || descMap.attrId == "FF24")
-            	displayDebugLog("Decoupled Mode - attrId: ${descMap.attrId} -  ${descMap.value}")
+            switch (Integer.parseInt(descMap.attrId, 16) )
+            {
+            	case 0x0007:  
+                	if ( descMap.value != "03" )
+            			state.batteryPresent = false
+                	break
+                case 0xFF22:
+                case 0xFF23:
+                case 0xFF24:
+                	displayInfoLog("Decoupled Mode - attrId: ${descMap.attrId} -  ${descMap.value}")
+            }
             break
-    	case "0001": //battery
+    	case 0x0001: //battery
         	if ( descMap.value == "0000" )
             	state.batteryPresent = false
         	else if (descMap.attrId == "0020")
 				events = events + getBatteryResult(convertHexToInt(descMap.value / 2))
             break
- 		case "0002": // temperature
+ 		case 0x0002: // temperature
         	if ( descMap.attrId == '0000' ) 
             	events = events + setTemp( convertHexToInt(descMap.value) )
             break
- 		case "0006":  //button press
+ 		case 0x0006:  //button press
         	state.flag = ( descMap.value[1] == 'c' ) ? 'double' : 'hard' 
         	events = events + parseSwitchOnOff(descMap)
             break
-        case "000C": //analog input
+        case 0x000C: //analog input
         	if ( descMap.attrId == "0055" )
             {
             	int x = Integer.parseInt(descMap.value, 16)
@@ -355,13 +362,13 @@ private def parseReportAttributeMessage(String description)
                 events = events + getWatts(y)
             }
         	break
-        case "0012": //Multistate Input
+        case 0x0012: //Multistate Input
         	Map vals = ['0000' : 'held', '0001': 'hard', '0002': 'double']
             state.flag = vals[descMap.value]
             events = events + parseSwitchOnOff(descMap)
             break
-        case "FCC0": //Opple
-        	if ( descMap.attrId == "00f7" )
+        case 0xFCC0: //Opple
+        	if ( Integer.parseInt(descMap.attrId, 16) == 0x00f7 )
             {
             	Map myMap = parseFCCF7(descMap.value)
             	displayDebugLog("FCCF7 Map: ${myMap}")
@@ -760,7 +767,7 @@ def refresh()
     //state.unwiredSwitches = [unwired]
     def cmds = []
     if ( state.opple )
-    	cmds = setOPPLE()
+    	cmds += setOPPLE()
     if ( state.endpoints[0] != null )
     	cmds += zigbee.readAttribute(0x0001, 0) + 
     			zigbee.readAttribute(0x0002, 0) +
@@ -852,38 +859,38 @@ def installed()
 {
 	displayDebugLog('installed')
     settings.infoLogging = true
-    refresh()
+    response(refresh())
 }
 
 def configure()
 {
 	displayDebugLog('configure')
     settings.infoLogging = true
-	refresh()
+	response(refresh())
 }
 
 def updated()
 {
-	displayDebugLog('updated')
+    displayDebugLog('updated')
     if ( getDataValue("onOff") != null )
     {
     	updateDataValue("onOff", "catchall")
     	response(configure())
     }
     else
-    	refresh()
+    	response(refresh())
 }
 
 def ping()
 {
 	displayDebugLog("Pinged")
-    zigbee.readAttribute(0x0002, 0)
+    return zigbee.readAttribute(0x0002, 0)
 }
 
 def poll()
 {
 	displayDebugLog("Polled")
-    zigbee.readAttribute(0x0002, 0)
+    return zigbee.readAttribute(0x0002, 0)
 }
 
 private getNumButtons()
