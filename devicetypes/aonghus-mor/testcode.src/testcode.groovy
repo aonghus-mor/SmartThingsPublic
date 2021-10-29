@@ -605,8 +605,8 @@ def childRefresh(String dni, Map sets)
 		log.debug "${device.displayName} ${e}"
     }
     displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}   ${state.decoupled}")
-	//if ( !state.refreshOn )
-    //	refresh()
+	if ( !state.refreshOn )
+    	response(refresh())
 }
 
 def on() 
@@ -747,14 +747,17 @@ def refresh()
         displayDebugLog("Children(b): ${state.childDevices}")
         
         displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
-        childDevices = getChildDevices()
-        state.refreshOn = true
-    	for (child in childDevices)
-    	{	
-            child.sendEvent(name: 'checkInterval', value: 3000)
-            displayDebugLog("${child}  ${child.deviceNetworkId}")
-            child.refresh()
-		}
+        if ( state.refreshOn )
+        {
+        	childDevices = getChildDevices()
+        	state.refreshOn = true
+    		for (child in childDevices)
+    		{	
+            	child.sendEvent(name: 'checkInterval', value: 3000)
+            	displayDebugLog("${child}  ${child.deviceNetworkId}")
+            	child.refresh()
+			}
+        }
         state.refreshOn = false
     }    
     displayDebugLog("Devices: ${state.childDevices}")
