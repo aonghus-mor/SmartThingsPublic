@@ -588,11 +588,12 @@ def childRefresh(String dni, Map sets)
 {
     log.info "${device.displayName} Child Refresh: ${dni} ${state.childDevices} ${sets}"
     def child = childFromNetworkId(dni)
+    def idx
     try
     {
     	if ( state.childDevices == null )
         	buildChildDevices()
-        def idx = state.childDevices.indexOf(dni) + 1
+        idx = state.childDevices.indexOf(dni) + 1
         if ( state.unwiredSwitches == null )
             state.unwiredSwitches = []
         state.unwiredSwitches[idx] = sets.unwired
@@ -605,8 +606,10 @@ def childRefresh(String dni, Map sets)
 		log.debug "${device.displayName} ${e}"
     }
     displayDebugLog("Child Refresh: ${idx} ${child.deviceNetworkId}   ${state.unwiredSwitches}   ${state.decoupled}")
-	if ( !state.refreshOn )
-    	response(refresh())
+	def cmds = []
+    if ( !state.refreshOn )
+    	cmds += refresh()
+    return cmds
 }
 
 def on() 
@@ -747,7 +750,7 @@ def refresh()
         displayDebugLog("Children(b): ${state.childDevices}")
         
         displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
-        if ( state.refreshOn )
+        if ( !state.refreshOn )
         {
         	childDevices = getChildDevices()
         	state.refreshOn = true
@@ -810,8 +813,7 @@ private def setDecoupled()
 {
 	displayDebugLog("Decoupled: ${state.decoupled}   ${decoupled}" )
     def cmds = []
-    //if ( state.opple )
-    if ( false )
+    if ( state.opple ) //if ( false )
     {
     	def masks = [0x01,0x02,0x04]
         def code = 0x00
@@ -819,7 +821,7 @@ private def setDecoupled()
         	if ( state.decoupled[i] )
             	code = code | masks[i]
     	//cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
-    	cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, code, [mfgCode: "0x115F"])
+    	cmds += zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
     else
     {	
@@ -834,8 +836,7 @@ private def setDecoupled()
 private def showDecoupled()
 {
 	def cmds = []
-    //if ( state.opple )
-    if ( false )
+    if ( state.opple )//if ( false )
     {
     	cmds = zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) 
     }
