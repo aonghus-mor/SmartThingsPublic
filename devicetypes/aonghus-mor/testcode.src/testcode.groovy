@@ -131,8 +131,8 @@ def parse(String description)
 		events = events + parseReportAttributeMessage(description)
     else if (description?.startsWith('on/off: '))
         parseCustomMessage(description) 
-   
-    def now = dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) //+ "\n" + state.lastPressType
+    
+   	def now = ( location.timeZone != null ) ? dat.format("HH:mm:ss EEE dd MMM '('zzz')'", location.timeZone) : dat.format("HH:mm:ss EEE dd MMM '('zzz')'")
     events << createEvent(name: "lastCheckin", value: now, descriptionText: "Check-In", displayed: debugLogging)
     
     displayDebugLog( "Parse returned: $events" )
@@ -427,7 +427,7 @@ def parseSwitchOnOff(Map descMap)
                 break
             case 1..2:
             case 4..5:
-            case 8:
+            case 8..9:
             	int idx = endpcode - ( endpcode < 3 ? 1 : ( endpcode < 6 ? 4 : 8 ) )
                 Map button = [name: 'button', value: action, data:[buttonNumber: 1], isStateChange: true]
             	getChild(idx).sendEvent( button)
@@ -940,7 +940,7 @@ private getNumButtons()
         case "lumi.switch.n3acn3": //QBKG26LM
             state.numSwitches = 3
             state.numButtons = 4
-            state.endpoints = [0x01,0x02,0x03,0x29,0x2A,0x2B,0xF6]
+            state.endpoints = [0x01,0x02,0x03,0x29,0x2A,0x2B,0xF6, 0x33,0x34,0x35]
             break
         case "lumi.remote.b186acn01": //WXKG03LM
         case "lumi.remote.b186acn02": //WXKG06LM
