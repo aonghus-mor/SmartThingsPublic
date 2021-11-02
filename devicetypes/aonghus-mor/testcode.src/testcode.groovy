@@ -779,7 +779,10 @@ def refresh()
     			zigbee.readAttribute(0x0002, 0) +
                 setDecoupled() +
                 showDecoupled()
-   
+   	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) +
+            zigbee.readAttribute(0xFCC0, 0x00F6, [mfgCode: "0x115F"]) +
+            zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) +
+            zigbee.readAttribute(0xFCC0, 0x00F7, [mfgCode: "0x115F"])
      
 	displayDebugLog("State: ${state}")
     displayDebugLog( cmds )
@@ -838,7 +841,7 @@ private def showDecoupled()
 	def cmds = []
     if ( state.opple )//if ( false )
     {
-    	cmds = zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) 
+    	cmds += zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) 
     }
     else
     {
