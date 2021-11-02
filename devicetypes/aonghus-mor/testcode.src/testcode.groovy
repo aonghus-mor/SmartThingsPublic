@@ -750,7 +750,7 @@ def refresh()
         displayDebugLog("Children(b): ${state.childDevices}")
         
         displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
-        if ( !state.refreshOn )
+        if ( false ) //if ( !state.refreshOn )
         {
         	childDevices = getChildDevices()
         	state.refreshOn = true
