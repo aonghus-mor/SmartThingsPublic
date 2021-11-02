@@ -944,6 +944,7 @@ private getNumButtons()
             state.numSwitches = 3
             state.numButtons = 4
             state.endpoints = [0x01,0x02,0x03,0x29,0x2A,0x2B,0xF6, 0x33,0x34,0x35]
+            state.opple = true
             break
         case "lumi.remote.b186acn01": //WXKG03LM
         case "lumi.remote.b186acn02": //WXKG06LM
