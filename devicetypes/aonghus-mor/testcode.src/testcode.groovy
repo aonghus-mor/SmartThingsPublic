@@ -335,6 +335,7 @@ private def parseReportAttributeMessage(String description)
             			state.batteryPresent = false
                 	break
                 case 0xFF22:
+                	state.hasFF22 = true
                 case 0xFF23:
                 case 0xFF24:
                 	displayInfoLog("Decoupled Mode - attrId: ${descMap.attrId} -  ${descMap.value}")
@@ -368,6 +369,7 @@ private def parseReportAttributeMessage(String description)
             events = events + parseSwitchOnOff(descMap)
             break
         case 0xFCC0: //Opple
+        	state.hasFCC0 = true
         	if ( Integer.parseInt(descMap.attrId, 16) == 0x00f7 )
             {
             	Map myMap = parseFCCF7(descMap.value)
@@ -772,7 +774,7 @@ def refresh()
     
     //state.unwiredSwitches = [unwired]
     def cmds = []
-    if ( state.opple )
+    if ( state.hasFCC0 )
     	cmds += setOPPLE()
     if ( state.endpoints[0] != null )
     	cmds += zigbee.readAttribute(0x0001, 0) + 
@@ -782,7 +784,8 @@ def refresh()
    	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) +
             zigbee.readAttribute(0xFCC0, 0x00F6, [mfgCode: "0x115F"]) +
             zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) +
-            zigbee.readAttribute(0xFCC0, 0x00F7, [mfgCode: "0x115F"])
+            zigbee.readAttribute(0xFCC0, 0x00F7, [mfgCode: "0x115F"]) +
+            zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"])
      
 	displayDebugLog("State: ${state}")
     displayDebugLog( cmds )
@@ -816,7 +819,7 @@ private def setDecoupled()
 {
 	displayDebugLog("Decoupled: ${state.decoupled}   ${decoupled}" )
     def cmds = []
-    if ( state.opple ) //if ( false )
+    if ( state.hasFCC0 ) //if ( false )
     {
     	def masks = [0x01,0x02,0x04]
         def code = 0x00
@@ -824,7 +827,7 @@ private def setDecoupled()
         	if ( state.decoupled[i] )
             	code = code | masks[i]
     	//cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
-    	cmds += zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, code, [mfgCode: "0x115F"])
+    	cmds += zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
     else
     {	
@@ -839,9 +842,10 @@ private def setDecoupled()
 private def showDecoupled()
 {
 	def cmds = []
-    if ( state.opple )//if ( false )
+    if ( state.hasFCC0 )//if ( false )
     {
-    	cmds += zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) 
+    	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) +
+        		zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"])
     }
     else
     {
@@ -858,7 +862,7 @@ private def setOPPLE()
         		zigbee.readAttribute(0x0000, 0x0005) + 
         		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x00, [mfgCode: "0x115F"]) +
                 zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 10,  [mfgCode: "0x115F"]) +
-                zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, 0x01, [mfgCode: "0x115F"])
+                zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, 0x00, [mfgCode: "0x115F"])
     return cmds
 }
 
@@ -904,7 +908,8 @@ private getNumButtons()
 {
     String model = device.getDataValue("model")
     state.oldOnOff = false
-    state.opple = false 
+    state.hasFCC0 = false 
+    state.hasFF22 = false
     switch ( model ) 
     {
     	case "lumi.ctrl_neutral1": //QBKG04LM
@@ -944,7 +949,7 @@ private getNumButtons()
             state.numSwitches = 3
             state.numButtons = 4
             state.endpoints = [0x01,0x02,0x03,0x29,0x2A,0x2B,0xF6, 0x33,0x34,0x35]
-            state.opple = true
+            state.hasFCC0 = true
             break
         case "lumi.remote.b186acn01": //WXKG03LM
         case "lumi.remote.b186acn02": //WXKG06LM
@@ -971,13 +976,13 @@ private getNumButtons()
             state.numButtons = 2
             //state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
             state.endpoints = [0x01,0x02,0xF3,0x29,0x2a,0xF5,0xF6, 0x33,0x34]
-			state.opple = true
+			state.hasFCC0 = true
 			break
         case "lumi.remote.b486opcn01":
         	state.numSwitches = 2
         	state.numButtons = 2
             state.endpoints = [null,null,null,0x01,0x02,0x03,null]  
-            state.opple = true
+            state.hasFCC0 = true
             break
         default:
         	displayDebugLog("Unknown device model: " + model)
