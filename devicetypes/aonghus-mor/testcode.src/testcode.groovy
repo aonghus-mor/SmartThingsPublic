@@ -752,16 +752,14 @@ def refresh()
         displayDebugLog("Children(b): ${state.childDevices}")
         
         displayDebugLog("Unwired Switches: ${state.unwiredSwitches}")
-        if ( false ) //if ( !state.refreshOn )
-        {
-        	childDevices = getChildDevices()
-        	state.refreshOn = true
-    		for (child in childDevices)
-    		{	
-            	child.sendEvent(name: 'checkInterval', value: 3000)
-            	displayDebugLog("${child}  ${child.deviceNetworkId}")
-            	child.refresh()
-			}
+        
+        childDevices = getChildDevices()
+        state.refreshOn = true
+        for (child in childDevices)
+        {	
+            child.sendEvent(name: 'checkInterval', value: 3000)
+            displayDebugLog("${child}  ${child.deviceNetworkId}")
+            //child.refresh()
         }
         state.refreshOn = false
     }    
@@ -826,6 +824,7 @@ private def setDecoupled()
         for ( int i = 0; i < state.decoupled.size(); i++ )
         	if ( state.decoupled[i] )
             	code = code | masks[i]
+        displayDebugLog("Decoupled Code: ${code}")
     	//cmds = zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
     	cmds += zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
@@ -858,9 +857,10 @@ private def showDecoupled()
 
 private def setOPPLE()
 {
-	def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
+	displayDebugLog("Setting OPPLE Mode")
+    def cmds = 	zigbee.readAttribute(0x0000, 0x0001) +
         		zigbee.readAttribute(0x0000, 0x0005) + 
-        		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x00, [mfgCode: "0x115F"]) +
+        		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"]) +
                 zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 10,  [mfgCode: "0x115F"]) +
                 zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, 0x00, [mfgCode: "0x115F"])
     return cmds
