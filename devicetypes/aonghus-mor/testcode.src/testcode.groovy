@@ -159,9 +159,9 @@ private def parseCatchAllMessage(String description)
 	displayDebugLog( cluster )
     def events = []
     
-    //String myString = decodeHexString('00200b0000210a011b210810209a000b21051928030010660010650010641e')
+    //String myString = decodeHexString('6C756D692E7377697463682E6C3261657531')
     //displayDebugLog("log5: ${myString}")
-    //Map myMap = parseFCC0F7('00000000230e00000e0b230d00200b3669210a00209a000321051a280301106501106423')
+    //Map myMap = parseFCC0F7('00200b0000210a011b210810209a000b21051928030010660010650010641e')
     //displayDebugLog("FCC0F7Map: ${myMap}")
     
     switch ( cluster.clusterId ) 
@@ -169,7 +169,7 @@ private def parseCatchAllMessage(String description)
     	case 0x0000: 
          	if ( cluster.command == 0x0a )
             {
-            	if (cluster.data[0] == 0x01 )
+            	if ( cluster.data[0] == 0x01 && cluster.data[1] == 0xff )
                 {
                     Map dtMap = dataMap(cluster.data)
                     displayDebugLog( "Map: " + dtMap )
@@ -324,16 +324,10 @@ private String decodeHexString(String hexString)
           "Invalid hexadecimal String supplied.");
     }
     
-    //byte[] bytes = new byte[hexString.length() / 2];
     String charString = ''
-    int j = 0
     for (int i = 0; i < hexString.length(); i += 2) 
-    {
-    	//displayDebugLog("${i}  ${j}  ${hexString[i..i+1]}")
-        charString += String.valueOf((char)Integer.parseInt(hexString[i..i+1],16)) //hexToByte(hexString.substring(i, i + 2));
-        j += 1
-    }
-    displayDebugLog("${hexString}   ${charString}")
+        charString += String.valueOf((char)Integer.parseInt(hexString[i..i+1],16))
+
     return charString;
 }
 
@@ -353,7 +347,10 @@ private def parseReportAttributeMessage(String description)
         	displayDebugLog( "Basic Cluster: $descMap" )
             switch (Integer.parseInt(descMap.attrId, 16) )
             {
-            	case 0x0007:  
+            	case 0x0005:
+                	displayDebugLog("Device Type: ${decodehexString(descMap.value)}")
+                    break
+                case 0x0007:  
                 	if ( descMap.value != "03" )
             			state.batteryPresent = false
                 	break
@@ -393,11 +390,18 @@ private def parseReportAttributeMessage(String description)
             break
         case 0xFCC0: //Opple
         	state.hasFCC0 = true
-        	if ( Integer.parseInt(descMap.attrId, 16) == 0x00f7 )
+        	switch ( Integer.parseInt(descMap.attrId, 16) )
             {
-            	Map myMap = parseFCC0F7(descMap.value)
-            	displayDebugLog("FCC0F7 Map: ${myMap}")
-                events = events + myMap.get(3)
+                case 0x00EE:
+                	displayDebugLog("0x00EE meaning: ${Integer.parseInt(descMap.value, 16)}")
+                    break
+                case 0x00F6:
+                	displayDebugLog("0x00F6 meaning: ${Integer.parseInt(descMap.value, 16)}")
+                    break
+                case 0x00F7:
+            		Map myMap = parseFCC0F7(descMap.value)
+            		displayDebugLog("FCC07 Map: ${myMap}")
+                	events = events + setTemp(myMap.get(3))
             }
         	break
  		//case "0008":
@@ -800,11 +804,11 @@ def refresh()
     if ( state.endpoints[0] != null )
     	cmds += zigbee.readAttribute(0x0001, 0) + 
     			zigbee.readAttribute(0x0002, 0) +
-                setDecoupled() +
-                showDecoupled()
+                setDecoupled() // + showDecoupled()
    	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) +
-            zigbee.readAttribute(0xFCC0, 0x00F6, [mfgCode: "0x115F"]) +
             zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) +
+            zigbee.readAttribute(0xFCC0, 0x0201, [mfgCode: "0x115F"]) +
+            zigbee.readAttribute(0xFCC0, 0x00F6, [mfgCode: "0x115F"]) +
             zigbee.readAttribute(0xFCC0, 0x00F7, [mfgCode: "0x115F"]) +
             zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"])
      
@@ -843,11 +847,11 @@ private def setDecoupled()
     if ( state.hasFCC0 ) //if ( false )
     {
     	def masks = [0x01,0x02,0x04]
-        def code = state.decoupled[0] ? 0x01 : 0x00
-        //for ( int i = 0; i < state.decoupled.size(); i++ )
-        	//if ( state.decoupled[i] )
-            	//code = code | masks[i]
-        displayDebugLog("Decoupled Code: ${code}")
+        def code = 0x00
+        for ( int i = 0; i < state.decoupled.size(); i++ )
+        	if ( !state.decoupled[i] )
+            	code = code | masks[i]
+        displayDebugLog("Decoupled Code: ${Integer.toHexString(code)}")
     	cmds += zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, code, [mfgCode: "0x115F"])
     	//cmds += zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
