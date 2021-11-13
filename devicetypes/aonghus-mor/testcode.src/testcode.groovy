@@ -316,7 +316,7 @@ private def getBattery(rawValue)
 	return event
 }
 
-private String decodeHexString(String hexString) 
+private String decodeHexString(hexString) 
 {
     if (hexString.length() % 2 == 1) 
     {
@@ -396,7 +396,7 @@ private def parseReportAttributeMessage(String description)
                 	displayDebugLog("0x00EE meaning: ${Integer.parseInt(descMap.value, 16)}")
                     break
                 case 0x00F6:
-                	displayDebugLog("0x00F6 meaning: ${Integer.parseInt(descMap.value, 16)}")
+                	displayDebugLog("0x00F6 meaning: ${Integer.parseInt(descMap.value[2..3]+descMap.value[0..1], 16)}")
                     break
                 case 0x00F7:
             		Map myMap = parseFCC0F7(descMap.value)
@@ -804,10 +804,9 @@ def refresh()
     if ( state.endpoints[0] != null )
     	cmds += zigbee.readAttribute(0x0001, 0) + 
     			zigbee.readAttribute(0x0002, 0) +
-                setDecoupled() // + showDecoupled()
-   	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) +
-            zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"]) +
-            zigbee.readAttribute(0xFCC0, 0x0201, [mfgCode: "0x115F"]) +
+                setDecoupled() + 
+                showDecoupled()
+   	cmds += 
             zigbee.readAttribute(0xFCC0, 0x00F6, [mfgCode: "0x115F"]) +
             zigbee.readAttribute(0xFCC0, 0x00F7, [mfgCode: "0x115F"]) +
             zigbee.readAttribute(0x0000, 0xFF22, [mfgCode: "0x115F"])
@@ -846,13 +845,10 @@ private def setDecoupled()
     def cmds = []
     if ( state.hasFCC0 ) //if ( false )
     {
-    	def masks = [0x01,0x02,0x04]
-        def code = 0x00
-        for ( int i = 0; i < state.decoupled.size(); i++ )
-        	if ( !state.decoupled[i] )
-            	code = code | masks[i]
-        displayDebugLog("Decoupled Code: ${Integer.toHexString(code)}")
-    	cmds += zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, code, [mfgCode: "0x115F"])
+    	//def masks = [0x01,0x02,0x04]
+        //def code = 0xFF
+        for ( byte i = 0; i < state.decoupled.size(); i++ )
+    		cmds += zigbee.writeAttribute(0xFCC0, 0x0200 + i, DataType.UINT8, state.decoupled[i] ? 0x00 : 0xFF, [mfgCode: "0x115F"])
     	//cmds += zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
     else
@@ -870,8 +866,9 @@ private def showDecoupled()
 	def cmds = []
     if ( state.hasFCC0 )//if ( false )
     {
-    	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) +
-        		zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"])
+    	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) 
+        for ( byte i = 0; i < state.decoupled.size(); i++ )
+        	cmds += zigbee.readAttribute(0xFCC0, 0x0200 + i, [mfgCode: "0x115F"])
     }
     else
     {
