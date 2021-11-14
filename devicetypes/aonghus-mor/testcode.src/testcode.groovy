@@ -847,8 +847,8 @@ private def setDecoupled()
     {
     	//def masks = [0x01,0x02,0x04]
         //def code = 0xFF
-        for ( byte i = 0; i < state.decoupled.size(); i++ )
-    		cmds += zigbee.writeAttribute(0xFCC0, 0x0200 + i, DataType.UINT8, state.decoupled[i] ? 0x00 : 0xFF, [mfgCode: "0x115F"])
+        //for ( byte i = 0; i < state.decoupled.size(); i++ )
+    	cmds += zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, state.decoupled[0] ? 0x00 : 0x01, [mfgCode: "0x115F"])
     	//cmds += zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
     else
@@ -867,8 +867,8 @@ private def showDecoupled()
     if ( state.hasFCC0 )//if ( false )
     {
     	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) 
-        for ( byte i = 0; i < state.decoupled.size(); i++ )
-        	cmds += zigbee.readAttribute(0xFCC0, 0x0200 + i, [mfgCode: "0x115F"])
+        //for ( byte i = 0; i < state.decoupled.size(); i++ )
+        cmds += zigbee.readAttribute(0xFCC0, 0x0200, [mfgCode: "0x115F"])
     }
     else
     {
