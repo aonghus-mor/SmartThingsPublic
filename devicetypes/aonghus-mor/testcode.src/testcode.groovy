@@ -870,8 +870,8 @@ private def showDecoupled()
     if ( state.hasFCC0 )//if ( false )
     {
     	cmds += zigbee.readAttribute(0xFCC0, 0x0009, [mfgCode: "0x115F"]) 
-        //for ( byte i = 0; i < state.decoupled.size(); i++ )
-        cmds += zigbee.readAttribute(0xFCC0, 0x0200, 
+        for ( int i = 0; i < state.decoupled.size(); i++ )
+        	cmds += zigbee.readAttribute(0xFCC0, 0x0200, 
         							[sourceEndpoint: state.endpoints[i], mfgCode: "0x115F"])
     }
     else
