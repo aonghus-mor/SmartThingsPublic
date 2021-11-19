@@ -627,10 +627,10 @@ def childRefresh(String dni, Map sets)
         idx = state.childDevices.indexOf(dni) + 1
         if ( state.unwiredSwitches == null )
             state.unwiredSwitches = []
-        state.unwiredSwitches[idx] = sets.unwired
+        state.unwiredSwitches[idx] = ( sets.unwired == null ? false : sets.unwired )
         if ( state.decoupled == null )
             state.decoupled = []
-        state.decoupled[idx] = sets.decoupled
+        state.decoupled[idx] = ( sets.decoupled == null ? false : sets.decoupled )
     }
     catch(Exception e) 
     {
@@ -728,12 +728,16 @@ def refresh()
     
     if ( state.unwiredSwitches == null )
         state.unwiredSwitches = []
-    state.unwiredSwitches[0] = unwired
+    if ( settings.unwired == null )
+    	settings.unwired = false
+    state.unwiredSwitches[0] = settings.unwired
     displayDebugLog("Unwired: ${state.unwiredSwitches}")
     
     if ( state.decoupled == null )
     	state.decoupled = []
-    state.decoupled[0] = decoupled
+    if ( settings.decoupled == null )
+    	ssettings.decoupled = false
+    state.decoupled[0] = settings.decoupled
     displayDebugLog("Decoupled: ${state.decoupled}")
     
     getNumButtons()
