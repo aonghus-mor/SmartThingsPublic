@@ -159,11 +159,6 @@ private def parseCatchAllMessage(String description)
 	displayDebugLog( cluster )
     def events = []
     
-    //String myString = decodeHexString('6C756D692E7377697463682E6C3261657531')
-    //displayDebugLog("log5: ${myString}")
-    //Map myMap = parseFCC0F7('00200b0000210a011b210810209a000b21051928030010660010650010641e')
-    //displayDebugLog("FCC0F7Map: ${myMap}")
-    
     switch ( cluster.clusterId ) 
     {
     	case 0x0000: 
@@ -316,17 +311,24 @@ private def getBattery(rawValue)
 	return event
 }
 
-private String decodeHexString(hexString) 
+private String decodeHexString(String hexString) 
 {
-    if (hexString.length() % 2 == 1) 
-    {
-        throw new IllegalArgumentException(
-          "Invalid hexadecimal String supplied.");
-    }
-    
     String charString = ''
-    for (int i = 0; i < hexString.length(); i += 2) 
-        charString += String.valueOf((char)Integer.parseInt(hexString[i..i+1],16))
+    try
+    {
+    	if (hexString.length() % 2 == 1) 
+    	{
+        	throw new IllegalArgumentException(
+          	"Invalid hexadecimal String supplied.");
+    	}
+        
+    	for (int i = 0; i < hexString.length(); i += 2) 
+        	charString += String.valueOf((char)Integer.parseInt(hexString[i..i+1],16))
+    }
+    catch(Exception e)
+    {
+    	displayDebugLog( "${e}")
+    }
 
     return charString;
 }
@@ -348,7 +350,7 @@ private def parseReportAttributeMessage(String description)
             switch (Integer.parseInt(descMap.attrId, 16) )
             {
             	case 0x0005:
-                	displayDebugLog("Device Type: ${decodehexString(descMap.value)}")
+                	displayDebugLog("Device Type: ${decodeHexString(descMap.value)}")
                     break
                 case 0x0007:  
                 	if ( descMap.value != "03" )
@@ -372,8 +374,8 @@ private def parseReportAttributeMessage(String description)
             	events = events + setTemp( convertHexToInt(descMap.value) )
             break
  		case 0x0006:  //button press
-        	state.flag = ( descMap.value[1] == 'c' ) ? 'double' : 'hard' 
-        	events = events + parseSwitchOnOff(descMap)
+            state.flag = ( descMap.value[1] == 'c' ) ? 'double' : 'hard' 
+        	events = events + parseSwitchOnOff(descMap) 
             break
         case 0x000C: //analog input
         	if ( descMap.attrId == "0055" )
@@ -438,7 +440,7 @@ private Map parseFCC0F7(String mystring)
 
 def parseSwitchOnOff(Map descMap)
 {
-	//parse messages on read attr cluster 0x0006 or 0x0012
+    //parse messages on read attr cluster 0x0006 or 0x0012
     def events = []
     int endp = Integer.parseInt(descMap.endpoint, 16)
     int endpcode = state.endpoints.indexOf(endp)
