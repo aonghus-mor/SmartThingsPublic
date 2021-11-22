@@ -2,7 +2,7 @@ metadata
 {
 	definition (	name: "Aqara Wall Switch Child", namespace: "aonghus-mor", author: "aonghus-mor", 
                 	mnmn: "SmartThingsCommunity",
-                	vid: "bfddb57e-f398-3d50-b994-fa3754eb4da6", // switch only (for wired) 
+                	vid: "c4129d8e-95d1-3d09-a481-5b685ca134aa", // switch only (for wired) 
                 	ocfDeviceType: "oic.d.switch"
                 	//vid: "052c5cad-cf03-3d0c-a0c4-744d2ce6f59a", //button only (for unwired)
     				//ocfDeviceType: "x.com.st.d.remotecontroller"

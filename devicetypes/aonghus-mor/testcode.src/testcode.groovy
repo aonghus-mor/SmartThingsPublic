@@ -21,6 +21,7 @@
  *  27.10.2020 Adapted for the new 3 button switch QBKG25LM ( Thanks to @Chiu for his help).
  *  09.03.2021 Extensive revision by @aonghus-mor, including own child DH.
  *  03.07.2021 Added support for unwired switches, WXKG06LM & WXKG06LM, and simple switch, Lumi WS-USC01
+ *  20.11.2021 Now works in decoupled mode for newer switches QBKG21LM - QBKG26LM (Thanks to @mwtay84 for his help)
 */
  
 import groovy.json.JsonOutput
@@ -31,9 +32,9 @@ metadata
     definition (	//name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
     				name: "testcode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
-                    vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
+                    vid: "0a242ce9-0299-3033-8860-aaab565eb04e",   // switch without neutral wire   
                     ocfDeviceType: "oic.d.switch"
-                    //vid: "a40a3ae3-71bc-33b0-b7f6-df7f0bced1ea", // switch with neutral wire
+                    //vid: "f7a15788-4d0f-323f-b061-010f145805a5", // switch with neutral wire
                     //ocfDeviceType: "oic.d.switch"
                     //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (no battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
@@ -851,13 +852,10 @@ private def setDecoupled()
     def cmds = []
     if ( state.hasFCC0 ) //if ( false )
     {
-    	//def masks = [0x01,0x02,0x04]
-        //def code = 0xFF
         for ( int i = 0; i < state.decoupled.size(); i++ )
     		cmds += zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, 
             								state.decoupled[i] ? 0x00 : 0x01, 
                                             [destEndpoint: state.endpoints[i], mfgCode: "0x115F"] )
-    	//cmds += zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, code, [mfgCode: "0x115F"])
     }
     else
     {	
@@ -896,8 +894,7 @@ private def setOPPLE()
     cmds += zigbee.readAttribute(0x0000, 0x0001) +
         		zigbee.readAttribute(0x0000, 0x0005) + 
         		zigbee.writeAttribute(0xFCC0, 0x0009, DataType.UINT8, 0x01, [mfgCode: "0x115F"]) +
-                zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 10,  [mfgCode: "0x115F"]) //+
-                //zigbee.writeAttribute(0xFCC0, 0x0200, DataType.UINT8, 0x00, [mfgCode: "0x115F"])
+                zigbee.writeAttribute(0xFCC0, 0x00F6, DataType.UINT16, 1000,  [mfgCode: "0x115F"]) 
     return cmds
 }
 
