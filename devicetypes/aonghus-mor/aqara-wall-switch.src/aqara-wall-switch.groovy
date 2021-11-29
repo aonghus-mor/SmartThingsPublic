@@ -32,9 +32,9 @@ metadata
     definition (	name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
     				//name: "testcode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
-                    vid: "fe77d822-fd6b-349b-aedb-318f9c78746b",   // switch without neutral wire
+                    vid: "0a242ce9-0299-3033-8860-aaab565eb04e",   // switch without neutral wire   
                     ocfDeviceType: "oic.d.switch"
-                    //vid: "a40a3ae3-71bc-33b0-b7f6-df7f0bced1ea", // switch with neutral wire
+                    //vid: "f7a15788-4d0f-323f-b061-010f145805a5", // switch with neutral wire
                     //ocfDeviceType: "oic.d.switch"
                     //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (no battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
@@ -712,8 +712,8 @@ private def clearState()
 
 def refresh() 
 {
-	//settings.infoLogging = true
-    //settings.debugLogging = true
+	settings.infoLogging = true
+    settings.debugLogging = true
     displayInfoLog( "refreshing" )
     clearState()
     def dat = new Date()
