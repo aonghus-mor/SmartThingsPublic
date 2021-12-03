@@ -32,14 +32,16 @@ metadata
     definition (	//name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
     				name: "testcode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
-                    vid: "0a242ce9-0299-3033-8860-aaab565eb04e",   // switch without neutral wire   
-                    ocfDeviceType: "oic.d.switch"
+                    //vid: "0a242ce9-0299-3033-8860-aaab565eb04e",   // switch without neutral wire   
+                    //ocfDeviceType: "oic.d.switch"
                     //vid: "f7a15788-4d0f-323f-b061-010f145805a5", // switch with neutral wire
                     //ocfDeviceType: "oic.d.switch"
                     //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (no battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
                     //vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",// button (with battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller" 
+                    vid: "ed80307e-39df-3948-932d-25e3d8e1dd25", // button and switch (no neutral)
+                    ocfDeviceType: "x.com.st.d.remotecontroller"
                 )
     {
         capability "Configuration"
@@ -230,9 +232,9 @@ private def parseCatchAllMessage(String description)
         	break
         case 0x0006: 	
 			//if ( state.oldOnOff )
-            	events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint.toString(), value: cluster.data[0].toString()] )
+            	//events = events + parseSwitchOnOff( [endpoint:cluster.sourceEndpoint.toString(), value: cluster.data[0].toString()] )
             //else
-            //	displayDebugLog('CatchAll message ignored!')
+            	displayDebugLog('CatchAll message ignored!')
             break
     }
     return events
@@ -647,17 +649,14 @@ def childRefresh(String dni, Map sets)
 def on() 
 {
     displayDebugLog("Switch 1 pressed on")
-    Map button = [name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true]
-    sendEvent(button)
-    displayDebugLog(button)
-    def cmd = []
-    if ( state.unwiredSwitches[0] )
+    if ( !state.decoupled[0] )
     {
-    	Map swoff = [name: 'switch', value: 'off']
-    	sendEvent( swoff )
-        displayDebugLog(swoff)
+    	Map button = [name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true]
+    	sendEvent(button)
+    	displayDebugLog(button)
     }
-    else
+    def cmd = []
+    if ( ! state.unwiredSwitches[0] )
     	cmd = zigbee.command(0x0006, 0x01, "", [destEndpoint: state.endpoints[0]] )
     displayDebugLog( cmd )
     return cmd 
@@ -666,18 +665,14 @@ def on()
 def off() 
 {
     displayDebugLog("Switch 1 pressed off")
-    Map button = [name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true]
-    sendEvent( button )
-    displayDebugLog(button)
-    //def cmd = state.unwiredSwitches[0] ? [] : zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endpoints[0]] )
-    def cmd = []
-    if ( state.unwiredSwitches[0] )
+    if ( !state.decoupled[0] )
     {
-    	Map swoff = [name: 'switch', value: 'off']
-    	sendEvent( swoff )
-        displayDebugLog(swoff)
-    }
-    else
+    	Map button = [name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true]
+    	sendEvent( button )
+    	displayDebugLog(button)
+     }
+    def cmd = []
+    if ( !state.unwiredSwitches[0] )
     	cmd = zigbee.command(0x0006, 0x00, "", [destEndpoint: state.endpoints[0]] )
     
     displayDebugLog(cmd)
