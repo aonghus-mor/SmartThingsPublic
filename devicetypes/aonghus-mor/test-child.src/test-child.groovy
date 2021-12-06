@@ -3,10 +3,12 @@ metadata
 	definition (	//name: "Aqara Wall Switch Child", namespace: "aonghus-mor", author: "aonghus-mor", 
                 	name: "Test Child", namespace: "aonghus-mor", author: "aonghus-mor",
                     mnmn: "SmartThingsCommunity",
-                	vid: "c4129d8e-95d1-3d09-a481-5b685ca134aa", // switch only (for wired) 
-                	ocfDeviceType: "oic.d.switch"
+                	//vid: "c4129d8e-95d1-3d09-a481-5b685ca134aa", // switch only (for wired) 
+                	//ocfDeviceType: "oic.d.switch"
                 	//vid: "052c5cad-cf03-3d0c-a0c4-744d2ce6f59a", //button only (for unwired)
     				//ocfDeviceType: "x.com.st.d.remotecontroller"
+                    vid: "5e9dedff-283e-38e7-aed3-32ec6a132bf4", //button & switch (for decoupled)
+    				ocfDeviceType: "x.com.st.d.remotecontroller"
     			) 
     {
 		capability "Switch"
@@ -27,9 +29,7 @@ void on()
 {
     if ( !decoupled )
     	sendEvent( name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true)
-    if ( unwired )
-		sendEvent( name: 'switch', value: 'off' )
-	else
+    if ( ! unwired )
     	parent.childOn(device.deviceNetworkId)
 }
 
@@ -37,9 +37,7 @@ void off()
 {
 	if ( !decoupled )
     	sendEvent( name: 'button', value: 'pushed', data:[buttonNumber: 1], isStateChange: true)
-    if ( unwired )
-    	sendEvent( name: 'switch', value: 'off' )
-	else
+    if ( !unwired )
     	parent.childOff(device.deviceNetworkId)
 }
 
