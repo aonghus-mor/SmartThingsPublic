@@ -40,8 +40,9 @@ metadata
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
                     //vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",// button (with battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller" 
-                    vid: "ed80307e-39df-3948-932d-25e3d8e1dd25", // button and switch (no neutral)
+                    vid: "2a0d4f73-869d-3e3e-93bf-8ef8e45de69d", // decoupled (no neutral)
                     ocfDeviceType: "x.com.st.d.remotecontroller"
+                    
                 )
     {
         capability "Configuration"
