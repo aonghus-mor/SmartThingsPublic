@@ -42,7 +42,8 @@ metadata
                     //ocfDeviceType: "x.com.st.d.remotecontroller" 
                     vid: "2a0d4f73-869d-3e3e-93bf-8ef8e45de69d", // decoupled (no neutral)
                     ocfDeviceType: "x.com.st.d.remotecontroller"
-                    
+                    //vid: "5d9177d1-3af5-30b9-b32e-f2c109aa590b", // decoupled (with neutral)
+                    //ocfDeviceType: "x.com.st.d.remotecontroller"
                 )
     {
         capability "Configuration"
