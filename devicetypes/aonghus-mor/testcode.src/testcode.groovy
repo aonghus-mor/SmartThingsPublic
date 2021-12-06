@@ -32,16 +32,16 @@ metadata
     definition (	//name: "Aqara Wall Switch", namespace: "aonghus-mor", author: "aonghus-mor",
     				name: "testcode", namespace: "aonghus-mor", author: "aonghus-mor",
                 	mnmn: "SmartThingsCommunity", 
-                    //vid: "0a242ce9-0299-3033-8860-aaab565eb04e",   // switch without neutral wire   
-                    //ocfDeviceType: "oic.d.switch"
+                    vid: "0a242ce9-0299-3033-8860-aaab565eb04e",   // switch without neutral wire   
+                    ocfDeviceType: "oic.d.switch"
                     //vid: "f7a15788-4d0f-323f-b061-010f145805a5", // switch with neutral wire
                     //ocfDeviceType: "oic.d.switch"
                     //vid: "52bbf611-e8b6-3530-89ac-9a4415b48045", // button (no battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
                     //vid: "1c4f60a8-b69f-37dd-9f1b-235e1d6f54bc",// button (with battery)
                     //ocfDeviceType: "x.com.st.d.remotecontroller" 
-                    vid: "2a0d4f73-869d-3e3e-93bf-8ef8e45de69d", // decoupled (no neutral)
-                    ocfDeviceType: "x.com.st.d.remotecontroller"
+                    //vid: "2a0d4f73-869d-3e3e-93bf-8ef8e45de69d", // decoupled (no neutral)
+                    //ocfDeviceType: "x.com.st.d.remotecontroller"
                     //vid: "5d9177d1-3af5-30b9-b32e-f2c109aa590b", // decoupled (with neutral)
                     //ocfDeviceType: "x.com.st.d.remotecontroller"
                 )
@@ -102,7 +102,14 @@ metadata
                 manufacturer: "LUMI", model: "lumi.switch.l1aeu1", deviceJoinName: "Aqara Switch EU-01" 
         fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
                 manufacturer: "LUMI", model: "lumi.switch.l2aeu1", deviceJoinName: "Aqara Switch EU-02"              
-     }
+    	fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b1lc04", deviceJoinName: "Aqara Switch QBKG38LM" 
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b2lc04", deviceJoinName: "Aqara Switch QBKG39LM"      
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b1nc01", deviceJoinName: "Aqara Switch QBKG40LM" 
+        fingerprint profileId: "0104", deviceId: "0100", inClusters: "0000,0002,0003,0004,0005,0006,0009", outClusters: "000A,0019", 
+                manufacturer: "LUMI", model: "lumi.switch.b2nc01", deviceJoinName: "Aqara Switch QBKG41LM"        }
 	
     preferences 
     {	
@@ -1001,10 +1008,19 @@ private getNumButtons()
 			break
         case "lumi.switch.b2laus01": //Lumi WS-USC02
         case "lumi.switch.l2aeu1": //Aqara Switch EU-02
+        case "lumi.switch.b2lc04": //QBKG39LM
         	state.numSwitches = 2
             state.numButtons = 2
             //state.endpoints = [0x01,0x02,0xF3,0x05,0x06,0xF5,0xF6]
             state.endpoints = [0x01,0x02,0xF3,0x29,0x2a,0xF5,0xF6, 0x33,0x34]
+			state.hasFCC0 = true
+			break
+        case "lumi.switch.b1lc04": //QBKG38LM
+        case "lumi.switch.b1nc01": //QBKG40LM
+        case "lumi.switch.b2nc01": //QBKG41LM
+        	state.numSwitches = 1
+            state.numButtons = 1
+            state.endpoints = [0x01,0xF02,0xF3,0x29,0xF4,0xF5,0xF6, 0x33,0xF7]
 			state.hasFCC0 = true
 			break
         case "lumi.remote.b486opcn01":
