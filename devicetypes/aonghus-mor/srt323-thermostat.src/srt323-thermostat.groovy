@@ -130,15 +130,18 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpo
 	map.unit = cmd.scale == 1 ? "F" : "C"
 	map.displayed = true
     map.isStateChange = true
-    //map.name = "perfectsmoke34787.heatingSetpoint"
     map.name = "heatingSetpoint"
-    //map.data = [constraints: [min:5,max:35]]
     log.debug "SetPointReport: ${map.value} ${map.unit}"
     //log.debug cmd
 	// So we can respond with same format
 	state.size = cmd.size
 	state.scale = cmd.scale
 	state.precision = cmd.precision
+    if ( state.setpoint != cmd.scaledValue )
+    {
+    	state.previousSetpoint = state.setpoint
+        state.setpoint = cmd.scaledValue
+    }
     state.lastReport = (new Date()).time
 	createEvent(map)
 }
@@ -386,7 +389,7 @@ def poll()
 
 def setHeatingSetpoint(degrees) 
 {
-    log.debug "Old setpoint: ${device.currentValue('heatingSetpoint')}"
+    log.debug "Old setpoint: ${device.currentValue('heatingSetpoint')}    ${state.setpoint}"
     //log.debug "Modes: ${device.currentValue('heatingSetpoint.constraints')}"
     //sendEvent(name: 'supportedThermostatModes', value: ['off', 'heat', 'previous', 'warm', 'cool'])
     if ( degrees == state.setpoint )
@@ -396,43 +399,15 @@ def setHeatingSetpoint(degrees)
     else
     {
         log.debug "Heating setpoint to be set to: ${degrees}."
-        // special codes, 100-103, are converted as below
-
-        // Don't let the setpoint go below the frost protection temperature
-        /*
-        degrees = degrees < state.Tfrost ? Tfrost : degrees
-        if ( degrees > 99 ) 
-        {
-            int degs = degrees.toInteger()
-            switch ( degs )
-            {
-                case 100: 
-                    degrees = state.previousSetpoint  // resets to the previous temperature setpoint 
-                    break
-                case 101: 
-                    degrees = state.Thigh  // sets to the temperature corresponding to code 101 in the preferences section of the DH
-                    break
-                case 102:
-                    degrees = state.Tlow  // ditto
-                    break
-                case 103:
-                    degrees = state.Tfrost // ditto
-                    break
-                default:
-                    log.debug "Invalid setpoint: $degrees" // invalid special code. setpoint abandoned 
-                    return
-            }
-        }
-		*/
+       
 		def CorF = (state.scale == 1 ? 'F' : 'C')
         def p = (state.precision == null) ? 1 : state.precision
         def dgs = p > 0 ? degrees.toDouble() : degrees.toInteger()
         state.p = p
-        //sendEvent(name: 'perfectsmoke34787.heatingSetpoint', value: dgs, unit: CorF, displayed: true, isStateChange: true)
         sendEvent(name: 'heatingSetpoint', value: dgs, unit: CorF, displayed: true, isStateChange: true)
         log.trace "setHeatingSetpoint scale: ${CorF} precision: ${p} setpoint: ${dgs}"    
-        state.previousSetpoint = state.setpoint
-        state.setpoint = degrees 
+        //state.previousSetpoint = state.setpoint
+        state.newSetpoint = degrees 
         state.updateNeeded = true
         // thermostatMode
 	}
@@ -470,9 +445,9 @@ def updateIfNeeded()
     
     if (state.updateNeeded)
     {
-        log.debug "Updating setpoint $state.setpoint"
+        log.debug "Updating setpoint ${state.newSetpoint}"
 		//sendEvent(name:"SRT321", value: "Updating setpoint $state.convertedDegrees")
-        double setpoint = state.setpoint
+        double setpoint = state.newSetpoint
         cmds << zwave.thermostatSetpointV1.thermostatSetpointSet(setpointType: physicalgraph.zwave.commands.thermostatsetpointv1.ThermostatSetpointSet.SETPOINT_TYPE_HEATING_1, 
         														scale: state.scale, 
                                                                 precision: state.p, 
