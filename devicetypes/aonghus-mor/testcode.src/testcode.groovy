@@ -741,7 +741,7 @@ def refresh()
     if ( state.decoupled == null )
     	state.decoupled = []
     if ( settings.decoupled == null )
-    	ssettings.decoupled = false
+    	settings.decoupled = false
     state.decoupled[0] = settings.decoupled
     displayDebugLog("Decoupled: ${state.decoupled}")
     
