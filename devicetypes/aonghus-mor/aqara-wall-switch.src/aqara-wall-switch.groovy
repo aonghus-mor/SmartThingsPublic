@@ -716,8 +716,8 @@ private def clearState()
 
 def refresh() 
 {
-	settings.infoLogging = true
-    settings.debugLogging = true
+	//settings.infoLogging = true
+    //settings.debugLogging = true
     displayInfoLog( "refreshing" )
     clearState()
     def dat = new Date()
@@ -1005,6 +1005,7 @@ private getNumButtons()
             state.numButtons = 1
             state.endpoints = null
 			state.oldOnOff = true
+            state.hasFCC0 = true
 			break
         case "lumi.switch.b2laus01": //Lumi WS-USC02
         case "lumi.switch.l2aeu1": //Aqara Switch EU-02
